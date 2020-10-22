@@ -117,4 +117,5 @@ module.exports = {
     }
     return a;
   },
+  isValidDate: (d) => d instanceof Date && !isNaN(d),
 };

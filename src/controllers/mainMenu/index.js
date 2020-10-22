@@ -23,18 +23,34 @@ mainMenu.enter(async (ctx) => {
     telegramId: ctx.from.id,
   });
 
-  if (userDB.blocked) {
+  if (userDB && userDB.blocked) {
     userDB.blocked = false;
     await userDB.save();
   }
 
+  const now = new Date();
   const roundDB = await Round.findOne({ status: "active" });
+  if (!roundDB)
+    return ctx.replyWithMarkdown(
+      `*Подпольное Вещание Батол* \n\n⚠️ 9 СЕЗОН ПВБ ЕЩЕ НЕ НАЧАЛСЯ! \nПридется подождать некоторое время! Следи за актуальной информацией в основном канале ПВБ! \n\nПВБ @veshaniebatol \nВсе треки @pvb\\_tracks \nТаблица clck.ru/QygAz \n\nПоиск и аренда жилья @lvngrm\\_bot`,
+      Markup.inlineKeyboard([
+        Markup.callbackButton(
+          "Обновить инфу",
+          JSON.stringify({ type: typesQuery.UPDATE_INFO })
+        ),
+      ]).extra({
+        disable_web_page_preview: true,
+      })
+    );
+
   const promoRoundDB = await Round.findOne({ index: 0 });
   const firstRoundDB = await Round.findOne({ index: 1 });
   const trackDB = await Track.findOne({ user: userDB._id, round: roundDB._id });
-  const lastTrackDB = await Track.findOne({ user: userDB._id }).populate(
-    "round"
-  );
+  const lastTrackDB = await Track.findOne(
+    { user: userDB._id },
+    {},
+    { sort: { uploadedAt: -1 } }
+  ).populate("round");
   const userTracksDB = await Track.find({
     user: userDB._id,
     round: { $nin: [promoRoundDB._id] },
@@ -42,15 +58,27 @@ mainMenu.enter(async (ctx) => {
   const countTracksCurrentRoundDB = await Track.countDocuments({
     round: roundDB._id,
   });
-  const countFirstRoundTracksDB = await Track.countDocuments({
-    round: firstRoundDB._id,
+  const countTracksToNextRoundDB = await Track.countDocuments({
+    round: roundDB._id,
+    status: "next",
   });
+  const countFirstRoundTracksDB = firstRoundDB.theme
+    ? await Track.countDocuments({ round: firstRoundDB._id })
+    : countTracksCurrentRoundDB;
   const countSeasonTracksDB = await Track.estimatedDocumentCount();
-  const activeUsersDB = await User.countDocuments({ status: "active" });
-  const now = new Date();
+
+  let roundUsers = "";
+  if (roundDB.index > 1) {
+    const prevRoundDB = await Round.findOne({ index: roundDB.index - 1 });
+    const prevRoundTracksToNextDB = await Track.countDocuments({
+      round: prevRoundDB._id,
+      status: "next",
+    });
+    roundUsers = `из ${prevRoundTracksToNextDB}`;
+  }
+
   const trackTotal = trackDB ? trackDB.total : 0;
   const seasonTotal = userTracksDB.reduce((acc, track) => acc + track.total, 0);
-  const roundUsers = roundDB.index > 1 ? `из ${activeUsersDB}` : "";
 
   let rapNamesStr = `*${userDB.rapName}*`;
   if (roundDB.isPaired) {
@@ -61,8 +89,11 @@ mainMenu.enter(async (ctx) => {
     rapNamesStr = `*${userDB.rapName}* VS *${vsUser.rapName}*`;
   }
 
+  const minScoreStr = roundDB.minScore
+    ? `\n👮 Проходной бал: *${roundDB.minScore}*`
+    : "";
   const scoreRoundStr =
-    roundDB.index === 1 ? "Оценка за раунд (+промо):" : "Оценка за раунд";
+    roundDB.index === 1 ? "Оценка за раунд (+промо):" : "Оценка за раунд:";
   const scoring = innerRoundStatus[roundDB.innerStatus].toUpperCase();
   const userStatus =
     userDB.status === "finished"
@@ -95,10 +126,21 @@ mainMenu.enter(async (ctx) => {
     btns = btns.slice(0, 1);
   }
 
+  if (
+    (roundDB.index > 1 && userDB.status === "empty") ||
+    userDB.status === "finished"
+  )
+    return ctx.replyWithMarkdown(
+      `*Подпольное Вещание Батол* \n${roundDB.name} \nТема: "${roundDB.theme}" \nПрием треков до 23:59 (МСК) *${finishedAt}*. \n\n⚠️ ${scoring} ${minScoreStr} \n\nУчастников на раунде: *${countTracksCurrentRoundDB}* ${roundUsers} \nПрошли в следующий раунд: *${countTracksToNextRoundDB}* \n\nВсего участников: ${countFirstRoundTracksDB} \nВсего треков: ${countSeasonTracksDB} \n\nПВБ @veshaniebatol \nВсе треки @pvb\\_tracks \nТаблица clck.ru/QygAz \n\nПоиск и аренда жилья @lvngrm\\_bot`,
+      Markup.inlineKeyboard(btns).extra({
+        disable_web_page_preview: true,
+      })
+    );
+
   await ctx.replyWithMarkdown(
     `*Подпольное Вещание Батол* \n${roundDB.name} \nТема: "${
       roundDB.theme
-    }" \nПрием треков до 23:59 (МСК) *${finishedAt}*. \n\n⚠️ ${scoring} \n\n${rapNamesStr} \n${userStatus.toUpperCase()} \n${scoreRoundStr} *${trackTotal}* \nОценка за сезон: ${seasonTotal} \n\nУчастников на раунде: *${countTracksCurrentRoundDB}* ${roundUsers} \n\nВсего участников: ${countFirstRoundTracksDB} \nВсего треков: ${countSeasonTracksDB} \n\nТаблица clck.ru/QygAz  \nВсе треки @pvb\\_tracks \nПВБ @veshaniebatol \n\nПоиск и аренда жилья @lvngrm\\_bot`,
+    }" \nПрием треков до 23:59 (МСК) *${finishedAt}*. \n\n⚠️ ${scoring} ${minScoreStr} \n\n${rapNamesStr} \n${userStatus.toUpperCase()} \n${scoreRoundStr} *${trackTotal}* \nОценка за сезон: ${seasonTotal} \n\nУчастников на раунде: *${countTracksCurrentRoundDB}* ${roundUsers} \nПрошли в следующий раунд: *${countTracksToNextRoundDB}* \n\nВсего участников: ${countFirstRoundTracksDB} \nВсего треков: ${countSeasonTracksDB} \n\nПВБ @veshaniebatol \nВсе треки @pvb\\_tracks \nТаблица clck.ru/QygAz \n\nПоиск и аренда жилья @lvngrm\\_bot`,
     Markup.inlineKeyboard(btns).extra({
       disable_web_page_preview: true,
     })
@@ -111,13 +153,17 @@ mainMenu.on("callback_query", checkJSONmw, async (ctx) => {
     telegramId: ctx.from.id,
   });
 
-  if (userDB.blocked) {
+  if (userDB && userDB.blocked) {
     userDB.blocked = false;
     await userDB.save();
   }
 
   const now = new Date();
   const roundDB = await Round.findOne({ status: "active" });
+  if (!roundDB) {
+    await ctx.answerCbQuery();
+    return ctx.scene.enter("main_menu");
+  }
   const trackDB = await Track.findOne({ user: userDB._id, round: roundDB._id });
 
   switch (type) {
@@ -146,7 +192,7 @@ mainMenu.on("callback_query", checkJSONmw, async (ctx) => {
       await ctx.answerCbQuery();
       return ctx.scene.enter("send_track");
     case typesQuery.UPDATE_INFO:
-      if (now > roundDB.finishedAt) {
+      if (now > roundDB.finishedAt && roundDB.innerStatus !== "ending") {
         roundDB.innerStatus = "scoring";
         await roundDB.save();
       }

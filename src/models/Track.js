@@ -23,14 +23,17 @@ const schema = new Schema({
       },
     },
   ],
-  refereeCount: Number,
+  refereeCount: {
+    type: Number,
+    default: 0,
+  },
   total: {
     type: Number,
     default: 0,
   },
   status: {
     type: String,
-    enum: ["next", "stop", "checking"],
+    enum: ["next", "stop", "checking", "accept"],
     default: "checking",
   },
   adminMessageId: String,

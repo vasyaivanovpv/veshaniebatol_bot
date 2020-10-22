@@ -3,17 +3,18 @@ const { ADMIN_ID, CHANNEL, REFEREE_CHANNEL } = require("../config");
 const Composer = require("telegraf/composer");
 const Markup = require("telegraf/markup");
 const Extra = require("telegraf/extra");
+
 const User = require("../models/User");
 const Round = require("../models/Round");
+const Track = require("../models/Track");
 
-const { toStringDate } = require("../utils");
+const { toStringDate, isValidDate, shuffleArray } = require("../utils");
 const {
   typesQuery,
   trackCaption,
   scores,
   innerRoundStatus,
 } = require("../constants");
-const Track = require("../models/Track");
 
 const adminRoute = new Composer();
 
@@ -22,7 +23,7 @@ adminRoute.command("commands", async (ctx) => {
     return ctx.replyWithMarkdown("❗️ Только Вася Иванов имеют такую силу)!");
 
   return ctx.replyWithMarkdown(
-    `*Команды* \n\naddRound 1\\*1 РАУНД ПВБ9\\*парный0-1 \nremoveRound 1 \nstartNextRound Тема\\*Кол судей\\*10.10.2020 \naddMinScore 40 \nshowScoreUser Никнейм \nbyeUser Никнейм \n\n/listRounds список раундов \n/finishScoring закончить судейство`
+    `*Команды* \n\naddRound 1\\*1 РАУНД ПВБ9\\*парный0-1 \nremoveRound 1 \nstartNextRound Тема\\*Кол судей\\*10.10.2020 \nsetMinScore 40 \neditCountReferee 5 \nshowScoreUser Никнейм \nbyeUser Никнейм \n\n/listRounds список раундов \n/finishScoring закончить судейство`
   );
 });
 
@@ -31,6 +32,9 @@ adminRoute.command("listRounds", async (ctx) => {
     return ctx.replyWithMarkdown("❗️ Только Вася Иванов имеют такую силу)!");
 
   const roundsDB = await Round.find();
+
+  if (!roundsDB.length)
+    return ctx.replyWithMarkdown(`❗️ Нет созданных раундов!`);
 
   const listRound = roundsDB.reduce((acc, round) => {
     acc = `${acc} \n\n${round.index} ${
@@ -88,15 +92,13 @@ adminRoute.hears(/^removeRound ([0-9]+)/, async (ctx) => {
   return ctx.replyWithMarkdown(`❗️ Удален раунд с индексом ${indexRound}.`);
 });
 
-adminRoute.hears(/^addMinScore ([0-9]+)/, async (ctx) => {
+adminRoute.hears(/^setMinScore ([0-9]+)/, async (ctx) => {
   if (ctx.from.id !== +ADMIN_ID)
     return ctx.replyWithMarkdown("❗️ Только Вася Иванов имеют такую силу)!");
 
   const minScore = +ctx.match[1];
 
-  const roundDB = await Round.findOne({
-    status: "active",
-  });
+  const roundDB = await Round.findOne({ status: "active" });
 
   if (!roundDB) return ctx.replyWithMarkdown(`❗️ Нет запущенных раундов.`);
 
@@ -104,7 +106,25 @@ adminRoute.hears(/^addMinScore ([0-9]+)/, async (ctx) => {
   await roundDB.save();
 
   return ctx.replyWithMarkdown(
-    `❗️ Раунд с индексом ${roundDB.index} с минимальным проходным баллом ${minScore}.`
+    `❗️ Раунд с индексом ${roundDB.index} имеет минимальный проходной балл ${minScore}.`
+  );
+});
+
+adminRoute.hears(/^editCountReferee ([0-9]+)/, async (ctx) => {
+  if (ctx.from.id !== +ADMIN_ID)
+    return ctx.replyWithMarkdown("❗️ Только Вася Иванов имеют такую силу)!");
+
+  const countReferee = +ctx.match[1];
+
+  const roundDB = await Round.findOne({ status: "active" });
+
+  if (!roundDB) return ctx.replyWithMarkdown(`❗️ Нет запущенных раундов.`);
+
+  roundDB.countReferee = countReferee;
+  await roundDB.save();
+
+  return ctx.replyWithMarkdown(
+    `❗️ Раунд с индексом ${roundDB.index} имеет количество судей ${countReferee}.`
   );
 });
 
@@ -113,9 +133,17 @@ adminRoute.command("finishScoring", async (ctx) => {
     return ctx.replyWithMarkdown("❗️ Только Вася Иванов имеют такую силу)!");
 
   const currentRoundDB = await Round.findOne({ status: "active" });
-  if (!currentRoundDB.minScore)
+  if (!currentRoundDB)
+    return ctx.replyWithMarkdown(`❗️ Нет запущенных раундов.`);
+
+  if (!currentRoundDB.minScore && currentRoundDB.isPaired) {
+    await Round.updateOne(
+      { _id: currentRoundDB._id },
+      { minScore: (currentRoundDB.countReferee + 1) / 2 }
+    );
+  } else if (!currentRoundDB.minScore && currentRoundDB.index > 0)
     return ctx.replyWithMarkdown(
-      `❗️ Добавь проходной бал minScore для текущего раунда ${currentRoundDB.index}`
+      `❗️ Добавь проходной бал minScore для текущего раунда ${currentRoundDB.index} с количеством судей ${currentRoundDB.countReferee}`
     );
 
   const partialScoreTracks = await Track.find({
@@ -123,7 +151,7 @@ adminRoute.command("finishScoring", async (ctx) => {
     refereeCount: { $lt: currentRoundDB.countReferee },
   }).populate("user");
 
-  if (partialScoreTracks.length) {
+  if (partialScoreTracks.length && !currentRoundDB.isPaired) {
     const artists = partialScoreTracks.reduce(
       (acc, track) => `${acc} ${track.user.rapName},`,
       ""
@@ -131,70 +159,97 @@ adminRoute.command("finishScoring", async (ctx) => {
     return ctx.replyWithMarkdown(`❗️ Треки без оценок: ${artists}`);
   }
 
-  await Track.updateMany(
-    {
-      round: currentRoundDB._id,
-      total: { $gt: currentRoundDB.minScore },
-    },
-    {
-      status: "next",
+  if (partialScoreTracks.length && currentRoundDB.isPaired) {
+    for (const track of partialScoreTracks) {
+      await Track.updateOne(
+        { _id: track._id },
+        { total: currentRoundDB.countReferee }
+      );
     }
-  );
-  const stopTracks = await Track.find({
-    round: currentRoundDB._id,
-    total: { $lte: currentRoundDB.minScore },
-  });
-
-  for (const stopTrack of stopTracks) {
-    stopTrack.status = "stop";
-    await stopTrack.save();
-    await User.updateOne({ _id: stopTrack.user }, { status: "finished" });
   }
 
-  await User.updateMany(
-    { status: "active", hasTrack: false },
-    { status: "finished" }
-  );
-  await User.updateMany({ hasTrack: true }, { hasTrack: false });
+  if (currentRoundDB.index) {
+    await Track.updateMany(
+      {
+        round: currentRoundDB._id,
+        total: { $gte: currentRoundDB.minScore },
+      },
+      {
+        status: "next",
+      }
+    );
+    const stopTracks = await Track.find({
+      round: currentRoundDB._id,
+      total: { $lt: currentRoundDB.minScore },
+    });
 
-  if (currentRoundDB.index === 1) {
+    for (const stopTrack of stopTracks) {
+      stopTrack.status = "stop";
+      await stopTrack.save();
+      await User.updateOne({ _id: stopTrack.user }, { status: "finished" });
+    }
+
+    await User.updateMany(
+      { status: "active", hasTrack: false },
+      { status: "finished" }
+    );
   }
+
+  currentRoundDB.innerStatus = "ending";
+  await currentRoundDB.save();
 
   return ctx.replyWithMarkdown(
     `❗️ Раунд с индексом ${currentRoundDB.index} закончил оценивать треки.`
   );
 });
 
-adminRoute.hears(/^startNextRound(.+)/, async (ctx) => {
+adminRoute.hears(/^startNextRound (.+)/, async (ctx) => {
   if (ctx.from.id !== +ADMIN_ID)
     return ctx.replyWithMarkdown("❗️ Только Вася Иванов имеют такую силу)!");
 
   const round = ctx.match[1].split("*");
-  const finishedAt = round[2].split(".");
+  const roundTheme = round[0].trim();
+  const roundRefereeCount = +round[1];
+  if (typeof roundRefereeCount !== "number")
+    return ctx.replyWithMarkdown(
+      `❗️ Введи правильное значение для поля Количество судей!`
+    );
+  const finishedAtStr = round[2].split(".");
+  const roundFinishedAt = new Date(
+    finishedAtStr[2],
+    finishedAtStr[1] - 1,
+    finishedAtStr[0],
+    23,
+    59
+  );
+  if (!isValidDate(roundFinishedAt))
+    return ctx.replyWithMarkdown(
+      `❗️ Введи правильное значение для поля Конечная дата приема треков!`
+    );
 
-  const roundDB = await Round.findOne({
-    status: "active",
-  });
-  const nextRoundIndex = roundDB.index + 1;
-  const nextRoundDB = await Round.findOne({
-    index: roundDB ? nextRoundIndex : 0,
-  });
+  const roundDB = await Round.findOne({ status: "active" });
+  if (roundDB && roundDB.innerStatus !== "ending")
+    return ctx.replyWithMarkdown(
+      `❗️ Заверши текущий раунд командой /finishScoring!`
+    );
+  const nextRoundIndex = roundDB ? roundDB.index + 1 : 0;
+  const nextRoundDB = await Round.findOne({ index: nextRoundIndex });
 
   if (!nextRoundDB)
     return ctx.replyWithMarkdown(
       `❗️ Не существует раунда с индексом *${nextRoundIndex}*!`
     );
 
+  const activeUsersDB = await User.find({ status: "active" });
+  if (!activeUsersDB.length && nextRoundIndex > 1)
+    return ctx.replyWithMarkdown(`❗️ На батле нет АКТИВНЫХ участников!`);
+
+  await User.updateMany({ hasTrack: true }, { hasTrack: false });
+
   nextRoundDB.status = "active";
-  nextRoundDB.theme = round[0];
-  nextRoundDB.countReferee = round[1];
-  nextRoundDB.finishedAt = new Date(
-    finishedAt[2],
-    finishedAt[1] - 1,
-    finishedAt[0],
-    23,
-    59
-  );
+  nextRoundDB.theme = roundTheme;
+  nextRoundDB.countReferee = roundRefereeCount;
+  nextRoundDB.finishedAt = roundFinishedAt;
   await nextRoundDB.save();
 
   await Round.updateMany(
@@ -205,6 +260,64 @@ adminRoute.hears(/^startNextRound(.+)/, async (ctx) => {
     { index: { $gt: nextRoundDB.index } },
     { status: "awaiting" }
   );
+
+  if (roundDB && roundDB.isPaired) {
+    for (const activeUser of activeUsersDB) {
+      await User.updateOne(
+        { _id: activeUser._id },
+        {
+          currentPair:
+            activeUser.currentPair % 2
+              ? (activeUser.currentPair + 1) / 2
+              : activeUser.currentPair / 2,
+        }
+      );
+    }
+  }
+
+  if (roundDB && !roundDB.isPaired && nextRoundDB.isPaired) {
+    const promoRoundDB = await Round.findOne({ index: 0 });
+    const nextTracksDB = await Track.aggregate([
+      {
+        $match: {
+          round: { $nin: [promoRoundDB._id] },
+          status: "next",
+        },
+      },
+      {
+        $project: {
+          user: 1,
+          total: 1,
+          round: 1,
+        },
+      },
+      {
+        $group: {
+          _id: "$user",
+          total: { $sum: "$total" },
+          round: { $last: "$round" },
+        },
+      },
+      {
+        $match: {
+          round: roundDB._id,
+        },
+      },
+      { $sort: { total: -1 } },
+    ]);
+
+    const groupA = nextTracksDB.slice(0, nextTracksDB.length / 2);
+    const groupB = nextTracksDB.slice(nextTracksDB.length / 2);
+    const shuffleGroupA = shuffleArray(groupA);
+    const shuffleGroupB = shuffleArray(groupB);
+
+    for (const [index, id] of shuffleGroupA.entries()) {
+      await User.updateOne({ _id: id }, { currentPair: index + 1 });
+    }
+    for (const [index, id] of shuffleGroupB.entries()) {
+      await User.updateOne({ _id: id }, { currentPair: index + 1 });
+    }
+  }
 
   return ctx.replyWithMarkdown(
     `❗️ Запущен ${nextRoundDB.name} с индексом ${nextRoundDB.index}.`
@@ -264,6 +377,7 @@ adminRoute.on("callback_query", async (ctx) => {
   const { type, aMId } = JSON.parse(data);
 
   const roundDB = await Round.findOne({ status: "active" });
+  if (!roundDB) return ctx.replyWithMarkdown(`❗️ Нет запущенных раундов.`);
   const trackDB = await Track.findOne({ adminMessageId: aMId });
   const userDB = await User.findOne({ _id: trackDB.user });
 
@@ -304,7 +418,7 @@ adminRoute.on("callback_query", async (ctx) => {
       try {
         await ctx.telegram.sendMessage(
           userDB.telegramId,
-          `❗️ *Уведомление* \n\nТвой трек принят на раунд!`,
+          `❗️ *Уведомление* \n\nТвой трек принят на раунд! Смотри здесь @pvb\\_tracks`,
           Extra.markdown()
         );
       } catch (err) {
@@ -318,6 +432,8 @@ adminRoute.on("callback_query", async (ctx) => {
 
       userDB.hasTrack = true;
       await userDB.save();
+      trackDB.status = "accept";
+      await trackDB.save();
 
       if (roundDB.index === 1) {
         userDB.status = "active";
@@ -335,7 +451,6 @@ adminRoute.on("callback_query", async (ctx) => {
 
       await ctx.telegram.sendAudio(CHANNEL, trackDB.trackId, {
         parse_mode: "Markdown",
-        caption: trackCaption,
       });
 
       await ctx.editMessageText(
@@ -347,6 +462,7 @@ adminRoute.on("callback_query", async (ctx) => {
         const tracksPairDB = await Track.find({
           round: roundDB._id,
           pair: trackDB.pair,
+          status: "accept",
         }).populate("user");
 
         if (tracksPairDB.length === 2) {
@@ -376,11 +492,9 @@ adminRoute.on("callback_query", async (ctx) => {
 
           await ctx.telegram.sendAudio(REFEREE_CHANNEL, trackOne.trackId, {
             parse_mode: "Markdown",
-            caption: trackCaption,
           });
           await ctx.telegram.sendAudio(REFEREE_CHANNEL, trackTwo.trackId, {
             parse_mode: "Markdown",
-            caption: trackCaption,
           });
 
           await ctx.telegram.sendMessage(
@@ -419,7 +533,6 @@ adminRoute.on("callback_query", async (ctx) => {
 
       await ctx.telegram.sendAudio(REFEREE_CHANNEL, trackDB.trackId, {
         parse_mode: "Markdown",
-        caption: trackCaption,
       });
 
       await ctx.telegram.sendMessage(

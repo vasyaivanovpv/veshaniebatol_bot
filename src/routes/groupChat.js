@@ -16,7 +16,6 @@ groupChatRoute.use(
       case +ADMIN_PVB:
         return adminRoute;
       default:
-        console.log(ctx.chat);
         return defaultRoute;
     }
   })

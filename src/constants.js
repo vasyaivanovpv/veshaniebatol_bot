@@ -21,6 +21,7 @@ const trackStatus = {
   stop: "Вылетел",
   next: "Прошел",
   checking: "Сдал трек",
+  accept: "Трек принят",
 };
 
 const innerRoundStatus = {

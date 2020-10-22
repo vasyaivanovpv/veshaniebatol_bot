@@ -23,7 +23,7 @@ refereeRoute.on("callback_query", async (ctx) => {
 
   const currentRoundDB = await Round.findOne({ status: "active" });
 
-  let trackDB, scoreIndex, trackUserPhrase;
+  let trackDB, scoreIndex, trackUserPhrase, loserDB;
 
   switch (type) {
     case typesQuery.ADD_SCORE:
@@ -46,6 +46,10 @@ refereeRoute.on("callback_query", async (ctx) => {
       //   return ctx.answerCbQuery(score);
       // }
 
+      if (!currentRoundDB.index) {
+        trackDB.status = "next";
+      }
+
       trackDB.scores.push({
         referee: ctx.from.id,
         score,
@@ -57,9 +61,7 @@ refereeRoute.on("callback_query", async (ctx) => {
       break;
 
     case typesQuery.WIN_PAIR:
-      const loserDB = await Track.findOne({ adminMessageId: lose }).populate(
-        "user"
-      );
+      loserDB = await Track.findOne({ adminMessageId: lose }).populate("user");
       trackDB = await Track.findOne({ adminMessageId: win }).populate("user");
       trackUserPhrase = `Пара *${trackDB.user.rapName}* и *${loserDB.user.rapName}* получила оценки от ВСЕХ судей`;
 
@@ -67,19 +69,19 @@ refereeRoute.on("callback_query", async (ctx) => {
         (objScore) => objScore.referee === ctx.from.id
       );
 
-      if (scoreIndex !== -1) {
-        if (!trackDB.scores[scoreIndex].score) {
-          trackDB.total = trackDB.total + 1;
-          loserDB.total = loserDB.total - 1;
-        }
+      // if (scoreIndex !== -1) {
+      //   if (!trackDB.scores[scoreIndex].score) {
+      //     trackDB.total = trackDB.total + 1;
+      //     loserDB.total = loserDB.total - 1;
+      //   }
 
-        trackDB.scores[scoreIndex].score = 1;
-        loserDB.scores[scoreIndex].score = 0;
-        await trackDB.save();
-        await loserDB.save();
+      //   trackDB.scores[scoreIndex].score = 1;
+      //   loserDB.scores[scoreIndex].score = 0;
+      //   await trackDB.save();
+      //   await loserDB.save();
 
-        return ctx.answerCbQuery(trackDB.user.rapName);
-      }
+      //   return ctx.answerCbQuery(trackDB.user.rapName);
+      // }
 
       trackDB.scores.push({
         referee: ctx.from.id,
@@ -104,6 +106,11 @@ refereeRoute.on("callback_query", async (ctx) => {
 
   trackDB.refereeCount = trackDB.scores.length;
   await trackDB.save();
+
+  if (loserDB) {
+    loserDB.refereeCount = loserDB.scores.length;
+    await loserDB.save();
+  }
 
   if (trackDB.scores.length === currentRoundDB.countReferee) {
     return ctx.editMessageText(trackUserPhrase, Extra.markdown());
