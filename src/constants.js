@@ -30,6 +30,16 @@ const innerRoundStatus = {
   ending: "Выставлены все оценки",
 };
 
+const textCellColors = {
+  navyBlue: { red: 0.16862746, green: 0.34509805, blue: 0.47843137 },
+  blue: { red: 0.6117647, green: 0.7607843, blue: 0.8980392 },
+};
+
+const sheetValues = {
+  firstScoreRow: 5,
+  rapNameColumn: "B",
+};
+
 module.exports = {
   typesQuery,
   textBlockLimits,
@@ -37,5 +47,7 @@ module.exports = {
   trackCaption,
   trackStatus,
   innerRoundStatus,
+  sheetValues,
+  textCellColors,
   scores,
 };

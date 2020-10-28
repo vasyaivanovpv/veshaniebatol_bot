@@ -7,6 +7,7 @@ const schema = new Schema({
   lastName: String,
   rapName: String,
   currentPair: Number,
+  currentSheetRow: Number,
   hasTrack: {
     type: Boolean,
     default: false,

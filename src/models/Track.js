@@ -14,6 +14,7 @@ const schema = new Schema({
   },
   pair: Number,
   trackId: String,
+  fileUniqueId: String,
   scores: [
     {
       referee: Number,
@@ -21,6 +22,7 @@ const schema = new Schema({
         type: Number,
         default: 0,
       },
+      comment: String,
     },
   ],
   refereeCount: {

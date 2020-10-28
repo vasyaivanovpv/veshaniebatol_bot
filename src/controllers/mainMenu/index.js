@@ -62,9 +62,10 @@ mainMenu.enter(async (ctx) => {
     round: roundDB._id,
     status: "next",
   });
-  const countFirstRoundTracksDB = firstRoundDB.theme
-    ? await Track.countDocuments({ round: firstRoundDB._id })
-    : countTracksCurrentRoundDB;
+  const countFirstRoundTracksDB =
+    firstRoundDB && firstRoundDB.theme
+      ? await Track.countDocuments({ round: firstRoundDB._id })
+      : countTracksCurrentRoundDB;
   const countSeasonTracksDB = await Track.estimatedDocumentCount();
 
   let roundUsers = "";
@@ -83,10 +84,13 @@ mainMenu.enter(async (ctx) => {
   let rapNamesStr = `*${userDB.rapName}*`;
   if (roundDB.isPaired) {
     const vsUser = await User.findOne({
+      status: "active",
       currentPair: userDB.currentPair,
       rapName: { $ne: userDB.rapName },
     });
-    rapNamesStr = `*${userDB.rapName}* VS *${vsUser.rapName}*`;
+    rapNamesStr = vsUser
+      ? `*${userDB.rapName}* VS *${vsUser.rapName}*`
+      : `*${userDB.rapName}*`;
   }
 
   const minScoreStr = roundDB.minScore

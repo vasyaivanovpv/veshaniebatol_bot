@@ -18,6 +18,7 @@ const schema = new Schema({
   minScore: Number,
   countReferee: Number,
   finishedAt: Date,
+  actualSheetRow: Number,
 });
 
 const Round = model("Round", schema);
