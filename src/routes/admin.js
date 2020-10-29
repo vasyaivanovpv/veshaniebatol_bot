@@ -238,7 +238,6 @@ adminRoute.command(
 adminRoute.hears(/^startNextRound (.+)/, async (ctx) => {
   if (ctx.from.id !== +ADMIN_ID)
     return ctx.replyWithMarkdown("❗️ Только Вася Иванов имеют такую силу)!");
-  console.log(ctx.match);
   const round = ctx.match[1].split("*");
   const roundTheme = round[0].trim();
   if (!round[1])
