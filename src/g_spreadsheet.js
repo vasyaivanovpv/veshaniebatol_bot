@@ -15,6 +15,7 @@ async function init() {
     // console.log(doc.title + " spreadsheet is ready");
   } catch (err) {
     console.log("GoogleSpreadsheet - !!!Something went wrong!!!");
+    console.log(err);
   }
 
   return doc;

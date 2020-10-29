@@ -32,7 +32,9 @@ adminRoute.command("commands", async (ctx) => {
 
 adminRoute.command("test", async (ctx) => {
   const doc = await spreadsheet();
-
+  if (!doc) {
+    await ctx.replyWithMarkdown("❗️ Таблицы НЕ работают!");
+  }
   await ctx.replyWithMarkdown("❗️ Таблицы работают!");
 });
 
