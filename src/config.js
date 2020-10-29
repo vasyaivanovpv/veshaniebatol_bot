@@ -10,6 +10,8 @@ const config = {
   DB_USER: "",
   DB_PASSWORD: "",
   ADMIN_ID: process.env.ADMIN_ID,
+  GOOGLE_SERVICE_ACCOUNT_EMAIL: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+  GOOGLE_PRIVATE_KEY: process.env.GOOGLE_PRIVATE_KEY,
 };
 
 if (process.env.NODE_ENV === "production") {
