@@ -235,210 +235,207 @@ adminRoute.command(
   })
 );
 
-adminRoute.hears(
-  /^startNextRound (.+)/,
-  Composer.fork(async (ctx) => {
-    if (ctx.from.id !== +ADMIN_ID)
-      return ctx.replyWithMarkdown("❗️ Только Вася Иванов имеют такую силу)!");
-
-    const round = ctx.match[1].split("*");
-    const roundTheme = round[0].trim();
-    if (!round[1])
-      return ctx.replyWithMarkdown(`❗️ Не хватает данных о количестве судей!`);
-    if (!round[2])
-      return ctx.replyWithMarkdown(`❗️ Не хватает даты завершения раунда!`);
-    const roundRefereeCount = +round[1];
-    if (typeof roundRefereeCount !== "number")
-      return ctx.replyWithMarkdown(
-        `❗️ Введи правильное значение для поля Количество судей!`
-      );
-    if (roundRefereeCount % 2 === 0)
-      return ctx.replyWithMarkdown(
-        `❗️ Введи нечетное количество судей вместо ${roundRefereeCount}!`
-      );
-    const finishedAtStr = round[2].split(".");
-    const roundFinishedAt = new Date(
-      finishedAtStr[2],
-      finishedAtStr[1] - 1,
-      finishedAtStr[0],
-      23,
-      59
-    );
-    if (!isValidDate(roundFinishedAt))
-      return ctx.replyWithMarkdown(
-        `❗️ Введи правильное значение для поля Конечная дата приема треков!`
-      );
-
-    const roundDB = await Round.findOne({ status: "active" });
-    if (roundDB && roundDB.innerStatus !== "ending")
-      return ctx.replyWithMarkdown(
-        `❗️ Заверши текущий раунд командой /finishScoring!`
-      );
-    const nextRoundIndex = roundDB ? roundDB.index + 1 : 0;
-    const nextRoundDB = await Round.findOne({ index: nextRoundIndex });
-
-    if (!nextRoundDB)
-      return ctx.replyWithMarkdown(
-        `❗️ Не существует раунда с индексом *${nextRoundIndex}*!`
-      );
-
-    const activeUsersDB = await User.find({ status: "active" });
-    if (!activeUsersDB.length && nextRoundIndex > 1)
-      return ctx.replyWithMarkdown(`❗️ На батле нет АКТИВНЫХ участников!`);
-
-    await User.updateMany({ hasTrack: true }, { hasTrack: false });
-
-    nextRoundDB.status = "active";
-    nextRoundDB.theme = roundTheme;
-    nextRoundDB.countReferee = roundRefereeCount;
-    nextRoundDB.finishedAt = roundFinishedAt;
-    await nextRoundDB.save();
-
-    await Round.updateMany(
-      { index: { $lt: nextRoundDB.index } },
-      { status: "finished" }
-    );
-    await Round.updateMany(
-      { index: { $gt: nextRoundDB.index } },
-      { status: "awaiting" }
-    );
-
-    if (roundDB && roundDB.isPaired) {
-      const doc = await spreadsheet();
-      const firstSheet = doc.sheetsByIndex[0];
-
-      const firstCell = sheetValues.rapNameColumn + sheetValues.firstScoreRow;
-      const lastCell =
-        sheetValues.rapNameColumn +
-        (sheetValues.firstScoreRow + activeUsersDB.length);
-
-      await firstSheet.loadCells(`${firstCell}:${lastCell}`);
-
-      let currentCell, actualCell, currentSheetRow;
-
-      for (const activeUser of activeUsersDB) {
-        currentSheetRow =
-          activeUser.currentSheetRow % 2
-            ? (activeUser.currentSheetRow + 1) / 2 + 2
-            : activeUser.currentSheetRow / 2 + 2;
-        await User.updateOne(
-          { _id: activeUser._id },
-          {
-            currentPair:
-              activeUser.currentPair % 2
-                ? (activeUser.currentPair + 1) / 2
-                : activeUser.currentPair / 2,
-            currentSheetRow: currentSheetRow,
-          }
-        );
-
-        actualCell = sheetValues.rapNameColumn + currentSheetRow;
-        currentCell = firstSheet.getCellByA1(actualCell);
-        currentCell.value = activeUser.rapName;
-        currentCell.textFormat = {
-          ...currentCell.textFormat,
-          foregroundColorStyle: {
-            rgbColor: textCellColors.blue,
-          },
-        };
-      }
-
-      await firstSheet.saveUpdatedCells();
-      doc.resetLocalCache();
-    }
-
-    if (roundDB && !roundDB.isPaired && nextRoundDB.isPaired) {
-      const promoRoundDB = await Round.findOne({ index: 0 });
-      const nextTracksDB = await Track.aggregate([
-        {
-          $match: {
-            round: { $nin: [promoRoundDB._id] },
-            status: "next",
-          },
-        },
-        {
-          $project: {
-            user: 1,
-            total: 1,
-            round: 1,
-          },
-        },
-        {
-          $group: {
-            _id: "$user",
-            total: { $sum: "$total" },
-            round: { $last: "$round" },
-          },
-        },
-        {
-          $match: {
-            round: roundDB._id,
-          },
-        },
-        { $sort: { total: -1 } },
-      ]);
-
-      const groupA = nextTracksDB.slice(0, nextTracksDB.length / 2);
-      const groupB = nextTracksDB.slice(nextTracksDB.length / 2);
-      const shuffleGroupA = shuffleArray(groupA);
-      const shuffleGroupB = shuffleArray(groupB);
-
-      for (const [index, id] of shuffleGroupA.entries()) {
-        await User.updateOne(
-          { _id: id },
-          {
-            currentPair: index + 1,
-            currentSheetRow: sheetValues.firstScoreRow + index * 2,
-          }
-        );
-      }
-      for (const [index, id] of shuffleGroupB.entries()) {
-        await User.updateOne(
-          { _id: id },
-          {
-            currentPair: index + 1,
-            currentSheetRow: sheetValues.firstScoreRow + 1 + index * 2,
-          }
-        );
-      }
-
-      const doc = await spreadsheet();
-      const firstSheet = doc.sheetsByIndex[0];
-
-      const firstCell = sheetValues.rapNameColumn + sheetValues.firstScoreRow;
-      const lastCell =
-        sheetValues.rapNameColumn +
-        (sheetValues.firstScoreRow + nextTracksDB.length);
-
-      await firstSheet.loadCells(`${firstCell}:${lastCell}`);
-
-      let currentCell, actualCell;
-
-      const activeUsersWithRowDB = await User.find(
-        { status: "active" },
-        "currentSheetRow rapName"
-      );
-      for (const user of activeUsersWithRowDB) {
-        actualCell = sheetValues.rapNameColumn + user.currentSheetRow;
-        currentCell = firstSheet.getCellByA1(actualCell);
-        currentCell.value = user.rapName;
-        currentCell.textFormat = {
-          ...currentCell.textFormat,
-          foregroundColorStyle: {
-            rgbColor: textCellColors.blue,
-          },
-        };
-      }
-
-      await firstSheet.saveUpdatedCells();
-      doc.resetLocalCache();
-    }
-
+adminRoute.hears(/^startNextRound (.+)/, async (ctx) => {
+  if (ctx.from.id !== +ADMIN_ID)
+    return ctx.replyWithMarkdown("❗️ Только Вася Иванов имеют такую силу)!");
+  console.log(ctx.match);
+  const round = ctx.match[1].split("*");
+  const roundTheme = round[0].trim();
+  if (!round[1])
+    return ctx.replyWithMarkdown(`❗️ Не хватает данных о количестве судей!`);
+  if (!round[2])
+    return ctx.replyWithMarkdown(`❗️ Не хватает даты завершения раунда!`);
+  const roundRefereeCount = +round[1];
+  if (typeof roundRefereeCount !== "number")
     return ctx.replyWithMarkdown(
-      `❗️ Запущен ${nextRoundDB.name} с индексом ${nextRoundDB.index}.`
+      `❗️ Введи правильное значение для поля Количество судей!`
     );
-  })
-);
+  if (roundRefereeCount % 2 === 0)
+    return ctx.replyWithMarkdown(
+      `❗️ Введи нечетное количество судей вместо ${roundRefereeCount}!`
+    );
+  const finishedAtStr = round[2].split(".");
+  const roundFinishedAt = new Date(
+    finishedAtStr[2],
+    finishedAtStr[1] - 1,
+    finishedAtStr[0],
+    23,
+    59
+  );
+  if (!isValidDate(roundFinishedAt))
+    return ctx.replyWithMarkdown(
+      `❗️ Введи правильное значение для поля Конечная дата приема треков!`
+    );
+
+  const roundDB = await Round.findOne({ status: "active" });
+  if (roundDB && roundDB.innerStatus !== "ending")
+    return ctx.replyWithMarkdown(
+      `❗️ Заверши текущий раунд командой /finishScoring!`
+    );
+  const nextRoundIndex = roundDB ? roundDB.index + 1 : 0;
+  const nextRoundDB = await Round.findOne({ index: nextRoundIndex });
+
+  if (!nextRoundDB)
+    return ctx.replyWithMarkdown(
+      `❗️ Не существует раунда с индексом *${nextRoundIndex}*!`
+    );
+
+  const activeUsersDB = await User.find({ status: "active" });
+  if (!activeUsersDB.length && nextRoundIndex > 1)
+    return ctx.replyWithMarkdown(`❗️ На батле нет АКТИВНЫХ участников!`);
+
+  await User.updateMany({ hasTrack: true }, { hasTrack: false });
+
+  nextRoundDB.status = "active";
+  nextRoundDB.theme = roundTheme;
+  nextRoundDB.countReferee = roundRefereeCount;
+  nextRoundDB.finishedAt = roundFinishedAt;
+  await nextRoundDB.save();
+
+  await Round.updateMany(
+    { index: { $lt: nextRoundDB.index } },
+    { status: "finished" }
+  );
+  await Round.updateMany(
+    { index: { $gt: nextRoundDB.index } },
+    { status: "awaiting" }
+  );
+
+  if (roundDB && roundDB.isPaired) {
+    const doc = await spreadsheet();
+    const firstSheet = doc.sheetsByIndex[0];
+
+    const firstCell = sheetValues.rapNameColumn + sheetValues.firstScoreRow;
+    const lastCell =
+      sheetValues.rapNameColumn +
+      (sheetValues.firstScoreRow + activeUsersDB.length);
+
+    await firstSheet.loadCells(`${firstCell}:${lastCell}`);
+
+    let currentCell, actualCell, currentSheetRow;
+
+    for (const activeUser of activeUsersDB) {
+      currentSheetRow =
+        activeUser.currentSheetRow % 2
+          ? (activeUser.currentSheetRow + 1) / 2 + 2
+          : activeUser.currentSheetRow / 2 + 2;
+      await User.updateOne(
+        { _id: activeUser._id },
+        {
+          currentPair:
+            activeUser.currentPair % 2
+              ? (activeUser.currentPair + 1) / 2
+              : activeUser.currentPair / 2,
+          currentSheetRow: currentSheetRow,
+        }
+      );
+
+      actualCell = sheetValues.rapNameColumn + currentSheetRow;
+      currentCell = firstSheet.getCellByA1(actualCell);
+      currentCell.value = activeUser.rapName;
+      currentCell.textFormat = {
+        ...currentCell.textFormat,
+        foregroundColorStyle: {
+          rgbColor: textCellColors.blue,
+        },
+      };
+    }
+
+    await firstSheet.saveUpdatedCells();
+    doc.resetLocalCache();
+  }
+
+  if (roundDB && !roundDB.isPaired && nextRoundDB.isPaired) {
+    const promoRoundDB = await Round.findOne({ index: 0 });
+    const nextTracksDB = await Track.aggregate([
+      {
+        $match: {
+          round: { $nin: [promoRoundDB._id] },
+          status: "next",
+        },
+      },
+      {
+        $project: {
+          user: 1,
+          total: 1,
+          round: 1,
+        },
+      },
+      {
+        $group: {
+          _id: "$user",
+          total: { $sum: "$total" },
+          round: { $last: "$round" },
+        },
+      },
+      {
+        $match: {
+          round: roundDB._id,
+        },
+      },
+      { $sort: { total: -1 } },
+    ]);
+
+    const groupA = nextTracksDB.slice(0, nextTracksDB.length / 2);
+    const groupB = nextTracksDB.slice(nextTracksDB.length / 2);
+    const shuffleGroupA = shuffleArray(groupA);
+    const shuffleGroupB = shuffleArray(groupB);
+
+    for (const [index, id] of shuffleGroupA.entries()) {
+      await User.updateOne(
+        { _id: id },
+        {
+          currentPair: index + 1,
+          currentSheetRow: sheetValues.firstScoreRow + index * 2,
+        }
+      );
+    }
+    for (const [index, id] of shuffleGroupB.entries()) {
+      await User.updateOne(
+        { _id: id },
+        {
+          currentPair: index + 1,
+          currentSheetRow: sheetValues.firstScoreRow + 1 + index * 2,
+        }
+      );
+    }
+
+    const doc = await spreadsheet();
+    const firstSheet = doc.sheetsByIndex[0];
+
+    const firstCell = sheetValues.rapNameColumn + sheetValues.firstScoreRow;
+    const lastCell =
+      sheetValues.rapNameColumn +
+      (sheetValues.firstScoreRow + nextTracksDB.length);
+
+    await firstSheet.loadCells(`${firstCell}:${lastCell}`);
+
+    let currentCell, actualCell;
+
+    const activeUsersWithRowDB = await User.find(
+      { status: "active" },
+      "currentSheetRow rapName"
+    );
+    for (const user of activeUsersWithRowDB) {
+      actualCell = sheetValues.rapNameColumn + user.currentSheetRow;
+      currentCell = firstSheet.getCellByA1(actualCell);
+      currentCell.value = user.rapName;
+      currentCell.textFormat = {
+        ...currentCell.textFormat,
+        foregroundColorStyle: {
+          rgbColor: textCellColors.blue,
+        },
+      };
+    }
+
+    await firstSheet.saveUpdatedCells();
+    doc.resetLocalCache();
+  }
+
+  return ctx.replyWithMarkdown(
+    `❗️ Запущен ${nextRoundDB.name} с индексом ${nextRoundDB.index}.`
+  );
+});
 
 adminRoute.hears(/^byeUser (.+)/, async (ctx) => {
   if (ctx.from.id !== +ADMIN_ID)
