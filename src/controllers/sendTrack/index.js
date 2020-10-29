@@ -129,6 +129,7 @@ sendTrack.on(
 );
 
 sendTrack.use(async (ctx) => {
+  return;
   await ctx.replyWithMarkdown(`❗️ Отправь трек в mp3!`);
 });
 
