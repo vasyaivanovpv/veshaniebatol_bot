@@ -30,6 +30,12 @@ adminRoute.command("commands", async (ctx) => {
   );
 });
 
+adminRoute.command("test", async (ctx) => {
+  const doc = await spreadsheet();
+
+  await ctx.replyWithMarkdown("❗️ Таблицы работают!");
+});
+
 adminRoute.command("listRounds", async (ctx) => {
   if (ctx.from.id !== +ADMIN_ID)
     return ctx.replyWithMarkdown("❗️ Только Вася Иванов имеют такую силу)!");
