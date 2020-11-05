@@ -51,16 +51,15 @@ sendTrack.on(
       telegramId: ctx.from.id,
     });
     const roundDB = await Round.findOne({ status: "active" });
-    const fileDest = `src/temp/${userDB.rapName} - ${roundDB.name}.mp3`;
+    const trackTitle = roundDB.index
+      ? `${roundDB.theme} (${roundDB.name})`
+      : roundDB.name;
+    const fileDest = `src/temp/${userDB.rapName} - ${trackTitle}.mp3`;
 
     const fileLink = await ctx.telegram.getFileLink(audio.file_id);
     const uploadText = await ctx.replyWithMarkdown(`❗️ Загружаю...`);
 
     await downloadFIle(fileLink, fileDest);
-
-    const trackTitle = roundDB.index
-      ? `${roundDB.theme} (${roundDB.name})`
-      : roundDB.name;
 
     const trackMessage = await ctx.replyWithAudio(
       { source: fileDest },
