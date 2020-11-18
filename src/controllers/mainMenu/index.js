@@ -14,6 +14,9 @@ const Track = require("../../models/Track");
 
 const mainMenu = new Scene("main_menu");
 
+mainMenu.start(async (ctx) => {
+  return ctx.scene.enter("main_menu");
+});
 mainMenu.command("cancel", async (ctx) => {
   return ctx.scene.enter("main_menu");
 });

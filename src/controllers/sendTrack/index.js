@@ -23,6 +23,9 @@ const sendTrack = new Scene("send_track");
 
 sendTrack.use(rateLimit(limitConfig));
 
+sendTrack.start(async (ctx) => {
+  return ctx.scene.enter("main_menu");
+});
 sendTrack.command("cancel", async (ctx) => {
   return ctx.scene.enter("main_menu");
 });
