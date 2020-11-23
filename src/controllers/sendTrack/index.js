@@ -105,7 +105,7 @@ sendTrack.on(
 
     await ctx.telegram.sendMessage(
       ADMIN_PVB,
-      `Трек от *${userDB.rapName}* \n\nЕсть возможность отклонить трек, если он совсем не подходит на раунд!`,
+      `Трек от [${userDB.rapName}](tg://user?id=${userDB.telegramId}) \n\nЕсть возможность отклонить трек, если он совсем не подходит на раунд!`,
       Markup.inlineKeyboard([
         [
           Markup.callbackButton(

@@ -528,7 +528,7 @@ adminRoute.on(
         await trackDB.remove();
 
         await ctx.editMessageText(
-          `Трек *${userDB.rapName}* удален!`,
+          `Трек [${userDB.rapName}](tg://user?id=${userDB.telegramId}) удален!`,
           Extra.markdown()
         );
         return ctx.answerCbQuery(`Трек удален!`);
@@ -576,7 +576,7 @@ adminRoute.on(
         });
 
         await ctx.editMessageText(
-          `Трек *${userDB.rapName}* принят!`,
+          `Трек [${userDB.rapName}](tg://user?id=${userDB.telegramId}) принят!`,
           Extra.markdown()
         );
 
