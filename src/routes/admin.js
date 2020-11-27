@@ -492,226 +492,223 @@ adminRoute.hears(/^showScoreUser (.+)/, async (ctx) => {
   );
 });
 
-adminRoute.on(
-  "callback_query",
-  Composer.fork(async (ctx) => {
-    const { data } = ctx.callbackQuery;
-    const { type, aMId } = JSON.parse(data);
+adminRoute.on("callback_query", async (ctx) => {
+  const { data } = ctx.callbackQuery;
+  const { type, aMId } = JSON.parse(data);
 
-    const roundDB = await Round.findOne({ status: "active" });
-    if (!roundDB) return ctx.replyWithMarkdown(`❗️ Нет запущенных раундов.`);
-    const trackDB = await Track.findOne({ adminMessageId: aMId });
-    const userDB = await User.findOne({ _id: trackDB.user });
+  const roundDB = await Round.findOne({ status: "active" });
+  if (!roundDB) return ctx.replyWithMarkdown(`❗️ Нет запущенных раундов.`);
+  const trackDB = await Track.findOne({ adminMessageId: aMId });
+  const userDB = await User.findOne({ _id: trackDB.user });
 
-    let scoreIK = [];
+  let scoreIK = [];
 
-    switch (type) {
-      case typesQuery.DELETE:
-        if (ctx.from.id !== +ADMIN_ID)
-          return ctx.answerCbQuery(`У тебя нет прав!`);
+  switch (type) {
+    case typesQuery.DELETE:
+      if (ctx.from.id !== +ADMIN_ID)
+        return ctx.answerCbQuery(`У тебя нет прав!`);
 
-        try {
-          await ctx.telegram.sendMessage(
-            userDB.telegramId,
-            `❗️ *Уведомление* \n\nТвой трек не принят на раунд! В чате пвб можешь уточнить почему.`,
-            Extra.markdown()
-          );
-        } catch (err) {
-          console.log(`Send message failed: ${err}`);
-
-          if (err.code === 403) {
-            userDB.blocked = true;
-            await userDB.save();
-          }
-        }
-
-        await trackDB.remove();
-
-        await ctx.editMessageText(
-          `Трек [${userDB.rapName}](tg://user?id=${userDB.telegramId}) удален!`,
+      try {
+        await ctx.telegram.sendMessage(
+          userDB.telegramId,
+          `❗️ *Уведомление* \n\nТвой трек не принят на раунд! В чате пвб можешь уточнить почему.`,
           Extra.markdown()
         );
-        return ctx.answerCbQuery(`Трек удален!`);
+      } catch (err) {
+        console.log(`Send message failed: ${err}`);
 
-      case typesQuery.ACCEPT:
-        if (ctx.from.id !== +ADMIN_ID)
-          return ctx.answerCbQuery(`У тебя нет прав!`);
-
-        try {
-          await ctx.telegram.sendMessage(
-            userDB.telegramId,
-            `❗️ *Уведомление* \n\nТвой трек принят на раунд! Смотри здесь @pvb\\_tracks`,
-            Extra.markdown()
-          );
-        } catch (err) {
-          console.log(`Send message failed: ${err}`);
-
-          if (err.code === 403) {
-            userDB.blocked = true;
-            await userDB.save();
-          }
-        }
-
-        userDB.hasTrack = true;
-        await userDB.save();
-        trackDB.status = "accept";
-        await trackDB.save();
-
-        if (roundDB.index === 1) {
-          userDB.status = "active";
+        if (err.code === 403) {
+          userDB.blocked = true;
           await userDB.save();
+        }
+      }
 
-          const promoRound = await Round.findOne({ index: 0 });
-          const promoTrack = await Track.findOne({
-            user: userDB._id,
-            round: promoRound._id,
+      await trackDB.remove();
+
+      await ctx.editMessageText(
+        `Трек [${userDB.rapName}](tg://user?id=${userDB.telegramId}) удален!`,
+        Extra.markdown()
+      );
+      return ctx.answerCbQuery(`Трек удален!`);
+
+    case typesQuery.ACCEPT:
+      if (ctx.from.id !== +ADMIN_ID)
+        return ctx.answerCbQuery(`У тебя нет прав!`);
+
+      try {
+        await ctx.telegram.sendMessage(
+          userDB.telegramId,
+          `❗️ *Уведомление* \n\nТвой трек принят на раунд! Смотри здесь @pvb\\_tracks`,
+          Extra.markdown()
+        );
+      } catch (err) {
+        console.log(`Send message failed: ${err}`);
+
+        if (err.code === 403) {
+          userDB.blocked = true;
+          await userDB.save();
+        }
+      }
+
+      userDB.hasTrack = true;
+      await userDB.save();
+      trackDB.status = "accept";
+      await trackDB.save();
+
+      if (roundDB.index === 1) {
+        userDB.status = "active";
+        await userDB.save();
+
+        const promoRound = await Round.findOne({ index: 0 });
+        const promoTrack = await Track.findOne({
+          user: userDB._id,
+          round: promoRound._id,
+        });
+
+        trackDB.total = promoTrack ? promoTrack.total : 0;
+        await trackDB.save();
+      }
+
+      await ctx.telegram.sendAudio(CHANNEL, trackDB.trackId, {
+        parse_mode: "Markdown",
+      });
+
+      await ctx.editMessageText(
+        `Трек [${userDB.rapName}](tg://user?id=${userDB.telegramId}) принят!`,
+        Extra.markdown()
+      );
+
+      if (roundDB.isPaired) {
+        const tracksPairDB = await Track.find({
+          round: roundDB._id,
+          pair: trackDB.pair,
+          status: "accept",
+        }).populate("user");
+
+        if (tracksPairDB.length === 2) {
+          const trackOne = tracksPairDB[0];
+          const trackTwo = tracksPairDB[1];
+
+          scoreIK = [
+            [
+              Markup.callbackButton(
+                trackOne.user.rapName,
+                JSON.stringify({
+                  type: typesQuery.WIN_PAIR,
+                  win: trackOne.adminMessageId,
+                  lose: trackTwo.adminMessageId,
+                })
+              ),
+              Markup.callbackButton(
+                trackTwo.user.rapName,
+                JSON.stringify({
+                  type: typesQuery.WIN_PAIR,
+                  win: trackTwo.adminMessageId,
+                  lose: trackOne.adminMessageId,
+                })
+              ),
+            ],
+          ];
+
+          await ctx.telegram.sendAudio(REFEREE_CHANNEL, trackOne.trackId, {
+            parse_mode: "Markdown",
+          });
+          await ctx.telegram.sendAudio(REFEREE_CHANNEL, trackTwo.trackId, {
+            parse_mode: "Markdown",
           });
 
-          trackDB.total = promoTrack ? promoTrack.total : 0;
-          await trackDB.save();
-        }
-
-        await ctx.telegram.sendAudio(CHANNEL, trackDB.trackId, {
-          parse_mode: "Markdown",
-        });
-
-        await ctx.editMessageText(
-          `Трек [${userDB.rapName}](tg://user?id=${userDB.telegramId}) принят!`,
-          Extra.markdown()
-        );
-
-        if (roundDB.isPaired) {
-          const tracksPairDB = await Track.find({
-            round: roundDB._id,
-            pair: trackDB.pair,
-            status: "accept",
-          }).populate("user");
-
-          if (tracksPairDB.length === 2) {
-            const trackOne = tracksPairDB[0];
-            const trackTwo = tracksPairDB[1];
-
-            scoreIK = [
-              [
-                Markup.callbackButton(
-                  trackOne.user.rapName,
-                  JSON.stringify({
-                    type: typesQuery.WIN_PAIR,
-                    win: trackOne.adminMessageId,
-                    lose: trackTwo.adminMessageId,
-                  })
-                ),
-                Markup.callbackButton(
-                  trackTwo.user.rapName,
-                  JSON.stringify({
-                    type: typesQuery.WIN_PAIR,
-                    win: trackTwo.adminMessageId,
-                    lose: trackOne.adminMessageId,
-                  })
-                ),
-              ],
-            ];
-
-            await ctx.telegram.sendAudio(REFEREE_CHANNEL, trackOne.trackId, {
-              parse_mode: "Markdown",
-            });
-            await ctx.telegram.sendAudio(REFEREE_CHANNEL, trackTwo.trackId, {
-              parse_mode: "Markdown",
-            });
-
-            await ctx.telegram.sendMessage(
-              REFEREE_CHANNEL,
-              `*${trackOne.user.rapName}* \n*${trackTwo.user.rapName}* \n\nПослушай оба трека и выбери лучшего! \nА чтобы оставить комментарий, используй реплай к треку! \n\nОценки поставили:`,
-              Markup.inlineKeyboard(scoreIK).extra({ parse_mode: "Markdown" })
-            );
-          }
-
-          const doc = await spreadsheet();
-          const firstSheet = doc.sheetsByIndex[0];
-
-          const actualCell = sheetValues.rapNameColumn + userDB.currentSheetRow;
-
-          await firstSheet.loadCells(actualCell);
-
-          const currentCell = firstSheet.getCellByA1(actualCell);
-          currentCell.textFormat = {
-            ...currentCell.textFormat,
-            foregroundColorStyle: {
-              rgbColor: textCellColors.navyBlue,
-            },
-          };
-
-          await firstSheet.saveUpdatedCells();
-          doc.resetLocalCache();
-
-          return ctx.answerCbQuery(`Трек принят!`);
-        }
-
-        if (!roundDB.index) {
-          scoreIK = scores.slice(0, 2).map((score) =>
-            Markup.callbackButton(
-              score,
-              JSON.stringify({
-                type: typesQuery.ADD_SCORE,
-                aMId,
-                score,
-              })
-            )
-          );
-        } else {
-          scoreIK = scores.map((score) =>
-            Markup.callbackButton(
-              score,
-              JSON.stringify({
-                type: typesQuery.ADD_SCORE,
-                aMId,
-                score,
-              })
-            )
+          await ctx.telegram.sendMessage(
+            REFEREE_CHANNEL,
+            `*${trackOne.user.rapName}* \n*${trackTwo.user.rapName}* \n\nПослушай оба трека и выбери лучшего! \nА чтобы оставить комментарий, используй реплай к треку! \n\nОценки поставили:`,
+            Markup.inlineKeyboard(scoreIK).extra({ parse_mode: "Markdown" })
           );
         }
-
-        await ctx.telegram.sendAudio(REFEREE_CHANNEL, trackDB.trackId, {
-          parse_mode: "Markdown",
-        });
-
-        await ctx.telegram.sendMessage(
-          REFEREE_CHANNEL,
-          `*${userDB.rapName}* \n\nПослушай трек и поставь оценку! А чтобы оставить комментарий, используй реплай к треку! \n\nОценки поставили:`,
-          Markup.inlineKeyboard(scoreIK, { columns: 5 }).extra({
-            parse_mode: "Markdown",
-          })
-        );
 
         const doc = await spreadsheet();
         const firstSheet = doc.sheetsByIndex[0];
 
-        const actualSheetRow =
-          roundDB.actualSheetRow || sheetValues.firstScoreRow;
-        const actualCell = sheetValues.rapNameColumn + actualSheetRow;
+        const actualCell = sheetValues.rapNameColumn + userDB.currentSheetRow;
 
         await firstSheet.loadCells(actualCell);
 
         const currentCell = firstSheet.getCellByA1(actualCell);
-        currentCell.value = userDB.rapName;
-        await firstSheet.saveUpdatedCells();
+        currentCell.textFormat = {
+          ...currentCell.textFormat,
+          foregroundColorStyle: {
+            rgbColor: textCellColors.navyBlue,
+          },
+        };
 
+        await firstSheet.saveUpdatedCells();
         doc.resetLocalCache();
 
-        userDB.currentSheetRow = actualSheetRow;
-        await userDB.save();
-
-        roundDB.actualSheetRow = actualSheetRow + 1;
-        await roundDB.save();
-
         return ctx.answerCbQuery(`Трек принят!`);
+      }
 
-      default:
-        break;
-    }
+      if (!roundDB.index) {
+        scoreIK = scores.slice(0, 2).map((score) =>
+          Markup.callbackButton(
+            score,
+            JSON.stringify({
+              type: typesQuery.ADD_SCORE,
+              aMId,
+              score,
+            })
+          )
+        );
+      } else {
+        scoreIK = scores.map((score) =>
+          Markup.callbackButton(
+            score,
+            JSON.stringify({
+              type: typesQuery.ADD_SCORE,
+              aMId,
+              score,
+            })
+          )
+        );
+      }
 
-    await ctx.answerCbQuery();
-  })
-);
+      await ctx.telegram.sendAudio(REFEREE_CHANNEL, trackDB.trackId, {
+        parse_mode: "Markdown",
+      });
+
+      await ctx.telegram.sendMessage(
+        REFEREE_CHANNEL,
+        `*${userDB.rapName}* \n\nПослушай трек и поставь оценку! А чтобы оставить комментарий, используй реплай к треку! \n\nОценки поставили:`,
+        Markup.inlineKeyboard(scoreIK, { columns: 5 }).extra({
+          parse_mode: "Markdown",
+        })
+      );
+
+      const doc = await spreadsheet();
+      const firstSheet = doc.sheetsByIndex[0];
+
+      const actualSheetRow =
+        roundDB.actualSheetRow || sheetValues.firstScoreRow;
+      const actualCell = sheetValues.rapNameColumn + actualSheetRow;
+
+      await firstSheet.loadCells(actualCell);
+
+      const currentCell = firstSheet.getCellByA1(actualCell);
+      currentCell.value = userDB.rapName;
+      await firstSheet.saveUpdatedCells();
+
+      doc.resetLocalCache();
+
+      userDB.currentSheetRow = actualSheetRow;
+      await userDB.save();
+
+      roundDB.actualSheetRow = actualSheetRow + 1;
+      await roundDB.save();
+
+      return ctx.answerCbQuery(`Трек принят!`);
+
+    default:
+      break;
+  }
+
+  await ctx.answerCbQuery();
+});
 
 module.exports = adminRoute;
