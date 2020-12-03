@@ -10,7 +10,7 @@ const Round = require("../models/Round");
 const Track = require("../models/Track");
 const Referee = require("../models/Referee");
 
-const { toStringDate, isValidDate, shuffleArray } = require("../utils");
+const { toStringDate, isValidDate, shuffleArray, sleep } = require("../utils");
 const {
   typesQuery,
   scores,
@@ -489,6 +489,44 @@ adminRoute.hears(/^showScoreUser (.+)/, async (ctx) => {
 
   return ctx.replyWithMarkdown(
     `❗️ Репер *${userDB.rapName}*, балов: *${seasonTotal}*!`
+  );
+});
+
+adminRoute.hears(/^sendMessage (.+)/, async (ctx) => {
+  if (ctx.from.id !== +ADMIN_ID)
+    return ctx.replyWithMarkdown("❗️ Только Вася Иванов имеют такую силу)!");
+
+  const message = ctx.match[1];
+
+  const usersDB = await User.find({}, "telegramId blocked");
+
+  for (const user of usersDB) {
+    if (user.blocked) continue;
+
+    try {
+      await ctx.telegram.sendMessage(
+        user.telegramId,
+        `❗️ *Уведомление* \n\n${message}`,
+        { parse_mode: "Markdown" }
+      );
+    } catch (err) {
+      console.log(`Send message failed: ${err}`);
+
+      if (err.code === 403) {
+        await User.updateOne(
+          { telegramId: user.telegramId },
+          { blocked: true }
+        );
+      }
+    }
+    await sleep(100);
+  }
+
+  const blockedUsersDB = await User.find({ blocked: true });
+  const deliverUsersDB = usersDB.length - blockedUsersDB.length;
+
+  return ctx.replyWithMarkdown(
+    `❗️ Всего реперов ${usersDB.length} = ${deliverUsersDB} + ${blockedUsersDB.length}.`
   );
 });
 

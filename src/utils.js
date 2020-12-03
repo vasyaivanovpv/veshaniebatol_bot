@@ -65,9 +65,7 @@ module.exports = {
       `${date.getMonth() + 1}`.padStart(2, "0"),
       date.getFullYear(),
     ].join("."),
-  sleep: (ms) => {
-    return new Promise((r) => setTimeout(r, ms));
-  },
+  sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
   formatPrice: (price) => `${price}`.replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1 "),
   downloadFIle: (url, dest) => {
     return new Promise((resolve, reject) => {
