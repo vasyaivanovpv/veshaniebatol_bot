@@ -19,12 +19,6 @@ const privateRoute = new Composer();
 privateRoute.use(session());
 privateRoute.use(stage.middleware());
 
-privateRoute.help(async (ctx) => {
-  await ctx.replyWithMarkdown(
-    `🆘 В любой непонятной ситуации используйте команду /cancel. \n\nИ кстати да, если Вы заметили баг то напишите сюда @vasyaivanovpv. \n\nЕсли все впорядке, продолжайте с того шага на котором остановились. \n☀️ Удачи!`
-  );
-});
-
 privateRoute.start(async (ctx) => {
   const { id, first_name, last_name } = ctx.from;
   const userName = [first_name, last_name].filter((v) => v).join(" ");

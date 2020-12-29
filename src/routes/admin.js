@@ -1,4 +1,9 @@
-const { ADMIN_ID, CHANNEL, REFEREE_CHANNEL } = require("../config");
+const {
+  ADMIN_ID,
+  CHANNEL,
+  REFEREE_CHANNEL,
+  ACTIVE_SHEET,
+} = require("../config");
 
 const Composer = require("telegraf/composer");
 const Markup = require("telegraf/markup");
@@ -310,7 +315,7 @@ adminRoute.hears(/^startNextRound (.+)/, async (ctx) => {
 
   if (roundDB && roundDB.isPaired) {
     const doc = await spreadsheet();
-    const firstSheet = doc.sheetsByIndex[0];
+    const firstSheet = doc.sheetsByIndex[ACTIVE_SHEET];
 
     const firstCell = sheetValues.rapNameColumn + sheetValues.firstScoreRow;
     const lastCell =
@@ -408,7 +413,7 @@ adminRoute.hears(/^startNextRound (.+)/, async (ctx) => {
     }
 
     const doc = await spreadsheet();
-    const firstSheet = doc.sheetsByIndex[0];
+    const firstSheet = doc.sheetsByIndex[ACTIVE_SHEET];
 
     const firstCell = sheetValues.rapNameColumn + sheetValues.firstScoreRow;
     const lastCell =
@@ -663,7 +668,7 @@ adminRoute.on("callback_query", async (ctx) => {
         }
 
         const doc = await spreadsheet();
-        const firstSheet = doc.sheetsByIndex[0];
+        const firstSheet = doc.sheetsByIndex[ACTIVE_SHEET];
 
         const actualCell = sheetValues.rapNameColumn + userDB.currentSheetRow;
 
@@ -720,7 +725,7 @@ adminRoute.on("callback_query", async (ctx) => {
       );
 
       const doc = await spreadsheet();
-      const firstSheet = doc.sheetsByIndex[0];
+      const firstSheet = doc.sheetsByIndex[ACTIVE_SHEET];
 
       const actualSheetRow =
         roundDB.actualSheetRow || sheetValues.firstScoreRow;

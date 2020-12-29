@@ -1,4 +1,4 @@
-const { ADMIN_ID, ADMIN_PVB } = require("../config");
+const { ADMIN_ID, ADMIN_PVB, ACTIVE_SHEET } = require("../config");
 
 const Composer = require("telegraf/composer");
 const Markup = require("telegraf/markup");
@@ -11,6 +11,33 @@ const Track = require("../models/Track");
 
 const { escapeChar } = require("../utils");
 const { typesQuery } = require("../constants");
+
+const sendMessageToUser = async (
+  ctx,
+  userTgId,
+  refereeName,
+  text,
+  isScore,
+  isUpdate
+) => {
+  const escapeText = typeof text === "number" ? text : escapeChar(text);
+  const typeMessage = isScore ? "оценку" : "комментарий";
+  const typeAction = isUpdate ? "изменил" : "добавил";
+
+  try {
+    await ctx.telegram.sendMessage(
+      userTgId,
+      `❗️ Судья *${refereeName}* ${typeAction} ${typeMessage} к твоему треку: \n\n_${escapeText}_`,
+      { parse_mode: "Markdown" }
+    );
+  } catch (err) {
+    console.log(`Send message failed: ${err}`);
+
+    if (err.code === 403) {
+      await User.updateOne({ telegramId: userTgId }, { blocked: true });
+    }
+  }
+};
 
 const refereeRoute = new Composer();
 
@@ -33,13 +60,21 @@ refereeRoute.on(
   "message",
   async (ctx, next) => {
     const { reply_to_message, from, message_id, text } = ctx.message;
+    const isScore = false;
 
     if (!reply_to_message) return;
     if (!reply_to_message.audio) return;
 
+    const refereeDB = await Referee.findOne({ telegramId: from.id });
+    if (!refereeDB)
+      return ctx.replyWithMarkdown(`❗️ ВАЖНО! Судья не найден в БД!`);
+
     const trackDB = await Track.findOne({
       fileUniqueId: reply_to_message.audio.file_unique_id,
-    }).populate("round");
+    })
+      .populate("round")
+      .populate("user");
+
     if (!trackDB)
       return ctx.replyWithMarkdown(`❗️ ВАЖНО! Трек не найден в БД!`);
 
@@ -58,6 +93,17 @@ refereeRoute.on(
         reply_to_message_id: message_id,
       });
 
+    const isUpdate = trackDB.scores[scoreIndex].comment ? true : false;
+
+    await sendMessageToUser(
+      ctx,
+      trackDB.user.telegramId,
+      refereeDB.rapName,
+      text,
+      isScore,
+      isUpdate
+    );
+
     trackDB.scores[scoreIndex].comment = text;
     await trackDB.save();
 
@@ -73,7 +119,7 @@ refereeRoute.on(
     }).populate("user");
 
     const doc = await spreadsheet();
-    const firstSheet = doc.sheetsByIndex[0];
+    const firstSheet = doc.sheetsByIndex[ACTIVE_SHEET];
 
     const actualCell = refereeDB.sheetColumn + trackDB.user.currentSheetRow;
 
@@ -101,7 +147,7 @@ refereeRoute.on(
     if (!refereeDB) return ctx.answerCbQuery(`Ты не добавлен в список судей!`);
 
     const doc = await spreadsheet();
-    const firstSheet = doc.sheetsByIndex[0];
+    const firstSheet = doc.sheetsByIndex[ACTIVE_SHEET];
     let trackDB,
       scoreIndex,
       trackUserPhrase,
@@ -109,7 +155,9 @@ refereeRoute.on(
       actualRow,
       actualColumn,
       actualCell,
-      currentCell;
+      currentCell,
+      isScore = true,
+      isUpdate = false;
 
     switch (type) {
       case typesQuery.ADD_SCORE:
@@ -132,10 +180,21 @@ refereeRoute.on(
         );
 
         if (scoreIndex !== -1) {
+          isUpdate = true;
+
           trackDB.total =
             trackDB.total - trackDB.scores[scoreIndex].score + score;
           trackDB.scores[scoreIndex].score = score;
           await trackDB.save();
+
+          await sendMessageToUser(
+            ctx,
+            trackDB.user.telegramId,
+            refereeDB.rapName,
+            score,
+            isScore,
+            isUpdate
+          );
 
           currentCell.value = score;
           await firstSheet.saveUpdatedCells();
@@ -155,6 +214,15 @@ refereeRoute.on(
         trackDB.total = trackDB.total + score;
 
         await trackDB.save();
+
+        await sendMessageToUser(
+          ctx,
+          trackDB.user.telegramId,
+          refereeDB.rapName,
+          score,
+          isScore,
+          isUpdate
+        );
 
         currentCell.value = score;
 
@@ -179,6 +247,8 @@ refereeRoute.on(
         );
 
         if (scoreIndex !== -1) {
+          isUpdate = true;
+
           if (!trackDB.scores[scoreIndex].score) {
             trackDB.total = trackDB.total + 1;
             loserDB.total = loserDB.total - 1;
@@ -188,6 +258,23 @@ refereeRoute.on(
           loserDB.scores[scoreIndex].score = 0;
           await trackDB.save();
           await loserDB.save();
+
+          await sendMessageToUser(
+            ctx,
+            trackDB.user.telegramId,
+            refereeDB.rapName,
+            1,
+            isScore,
+            isUpdate
+          );
+          await sendMessageToUser(
+            ctx,
+            loserDB.user.telegramId,
+            refereeDB.rapName,
+            0,
+            isScore,
+            isUpdate
+          );
 
           currentCell.value = 1;
           await firstSheet.saveUpdatedCells();
@@ -209,6 +296,23 @@ refereeRoute.on(
 
         await trackDB.save();
         await loserDB.save();
+
+        await sendMessageToUser(
+          ctx,
+          trackDB.user.telegramId,
+          refereeDB.rapName,
+          1,
+          isScore,
+          isUpdate
+        );
+        await sendMessageToUser(
+          ctx,
+          loserDB.user.telegramId,
+          refereeDB.rapName,
+          0,
+          isScore,
+          isUpdate
+        );
 
         currentCell.value = 1;
 

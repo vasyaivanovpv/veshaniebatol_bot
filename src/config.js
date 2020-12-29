@@ -12,6 +12,7 @@ const config = {
   ADMIN_ID: process.env.ADMIN_ID,
   GOOGLE_SERVICE_ACCOUNT_EMAIL: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
   GOOGLE_PRIVATE_KEY: process.env.GOOGLE_PRIVATE_KEY,
+  ACTIVE_SHEET: 4,
 };
 
 if (process.env.NODE_ENV === "production") {
@@ -23,6 +24,7 @@ if (process.env.NODE_ENV === "production") {
   config.DB_HOST = process.env.DB_HOST;
   config.DB_USER = process.env.DB_USER;
   config.DB_PASSWORD = process.env.DB_PASSWORD;
+  config.ACTIVE_SHEET = 0;
 }
 
 module.exports = config;
