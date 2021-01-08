@@ -31,7 +31,7 @@ adminRoute.command("commands", async (ctx) => {
     return ctx.replyWithMarkdown("❗️ Только Вася Иванов имеют такую силу)!");
 
   return ctx.replyWithMarkdown(
-    `*Команды* \n\naddReferee 5234523\\*столбец(F)\\*пикуль \naddRound 1\\*1 РАУНД ПВБ9\\*парный0-1 \nremoveRound 1 \nstartNextRound Тема\\*Кол судей\\*10.10.2020 \nsetMinScore 40 \neditCountReferee 5 \nshowScoreUser Никнейм \nbyeUser Никнейм \n\n/listRounds список раундов \n/finishScoring закончить судейство`
+    `*Команды* \n\naddReferee 5234523\\*столбец(F)\\*пикуль \naddRound 1\\*1 РАУНД ПВБ9\\*парный0-1 \nremoveRound 1 \nstartNextRound Тема\\*Кол судей\\*10.10.2020 \nsetMinScore 40 \neditCountReferee 5 \nshowScoreUser Никнейм \nbyeUser Никнейм \n\n/listRounds список раундов \n/finishScoring закончить судейство \n/sendTracks прислать судьям все треки`
   );
 });
 
@@ -752,6 +752,137 @@ adminRoute.on("callback_query", async (ctx) => {
   }
 
   await ctx.answerCbQuery();
+});
+
+adminRoute.command("sendTracks", async (ctx) => {
+  if (ctx.from.id !== +ADMIN_ID)
+    return ctx.replyWithMarkdown("❗️ Только Вася Иванов имеют такую силу)!");
+
+  const tracksDB = await Track.find({ status: "accept" })
+    .populate("round")
+    .populate("user");
+
+  const referees = {};
+  const refereesDB = await Referee.find({});
+  refereesDB.map((referee) => {
+    referees[referee.telegramId] = referee.rapName;
+  });
+
+  const roundDB = await Round.findOne({ status: "active" });
+  if (!roundDB) return ctx.replyWithMarkdown(`❗️ Нет запущенных раундов.`);
+
+  let scoreIK = [],
+    counter = 0;
+
+  if (roundDB.isPaired) {
+    for (const track of tracksDB) {
+      const tracksPairDB = await Track.find({
+        round: roundDB._id,
+        pair: track.pair,
+        status: "accept",
+      }).populate("user");
+
+      if (tracksPairDB.length === 2) {
+        const trackOne = tracksPairDB[0];
+        const trackTwo = tracksPairDB[1];
+
+        if (trackOne.uploadedAt > trackTwo.uploadedAt) continue;
+
+        scoreIK = [
+          [
+            Markup.callbackButton(
+              trackOne.user.rapName,
+              JSON.stringify({
+                type: typesQuery.WIN_PAIR,
+                win: trackOne.adminMessageId,
+                lose: trackTwo.adminMessageId,
+              })
+            ),
+            Markup.callbackButton(
+              trackTwo.user.rapName,
+              JSON.stringify({
+                type: typesQuery.WIN_PAIR,
+                win: trackTwo.adminMessageId,
+                lose: trackOne.adminMessageId,
+              })
+            ),
+          ],
+        ];
+
+        await ctx.telegram.sendAudio(REFEREE_CHANNEL, trackOne.trackId, {
+          parse_mode: "Markdown",
+        });
+        await ctx.telegram.sendAudio(REFEREE_CHANNEL, trackTwo.trackId, {
+          parse_mode: "Markdown",
+        });
+
+        const refereeNames =
+          trackOne.scores.map((scoreObj) => referees[scoreObj.referee]) || "";
+        const refereesStr = refereeNames && refereeNames.join(", ");
+
+        await ctx.telegram.sendMessage(
+          REFEREE_CHANNEL,
+          `*${trackOne.user.rapName}* \n*${trackTwo.user.rapName}* \n\nПослушай оба трека и выбери лучшего! \nА чтобы оставить комментарий, используй реплай к треку! \n\nОценки поставили: ${refereesStr}`,
+          Markup.inlineKeyboard(scoreIK).extra({ parse_mode: "Markdown" })
+        );
+      }
+      counter++;
+      await sleep(1000);
+    }
+
+    return ctx.replyWithMarkdown(
+      `❗️ Всего отправлено *${counter}* из ${tracksDB.length} найденных.`
+    );
+  }
+
+  for (const track of tracksDB) {
+    if (!roundDB.index) {
+      scoreIK = scores.slice(0, 2).map((score) =>
+        Markup.callbackButton(
+          score,
+          JSON.stringify({
+            type: typesQuery.ADD_SCORE,
+            aMId: track.adminMessageId,
+            score,
+          })
+        )
+      );
+    } else {
+      scoreIK = scores.map((score) =>
+        Markup.callbackButton(
+          score,
+          JSON.stringify({
+            type: typesQuery.ADD_SCORE,
+            aMId: track.adminMessageId,
+            score,
+          })
+        )
+      );
+    }
+
+    const refereeNames =
+      track.scores.map((scoreObj) => referees[scoreObj.referee]) || "";
+    const refereesStr = refereeNames && refereeNames.join(", ");
+
+    await ctx.telegram.sendAudio(REFEREE_CHANNEL, track.trackId, {
+      parse_mode: "Markdown",
+    });
+
+    await ctx.telegram.sendMessage(
+      REFEREE_CHANNEL,
+      `*${track.user.rapName}* \n\nПослушай трек и поставь оценку! А чтобы оставить комментарий, используй реплай к треку! \n\nОценки поставили: ${refereesStr}`,
+      Markup.inlineKeyboard(scoreIK, { columns: 5 }).extra({
+        parse_mode: "Markdown",
+      })
+    );
+
+    counter++;
+    await sleep(1000);
+  }
+
+  return ctx.replyWithMarkdown(
+    `❗️ Всего отправлено *${counter}* из ${tracksDB.length} найденных треков.`
+  );
 });
 
 module.exports = adminRoute;
