@@ -24,6 +24,8 @@ const {
   textCellColors,
 } = require("../constants");
 
+const messageChatDelay = (60 * 1000) / 20;
+
 const adminRoute = new Composer();
 
 adminRoute.command("commands", async (ctx) => {
@@ -827,7 +829,7 @@ adminRoute.command("sendTracks", async (ctx) => {
         );
       }
       counter++;
-      await sleep(1000);
+      await sleep(messageChatDelay * 2);
     }
 
     return ctx.replyWithMarkdown(
@@ -877,7 +879,7 @@ adminRoute.command("sendTracks", async (ctx) => {
     );
 
     counter++;
-    await sleep(1000);
+    await sleep(messageChatDelay * 2);
   }
 
   return ctx.replyWithMarkdown(
