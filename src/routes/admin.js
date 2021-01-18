@@ -887,4 +887,13 @@ adminRoute.command("sendTracks", async (ctx) => {
   );
 });
 
+adminRoute.on("voice", async (ctx) => {
+  await ctx.telegram.sendVoice(CHANNEL, ctx.message.voice.file_id, {
+    caption: "#осколки",
+  });
+});
+adminRoute.on("video_note", async (ctx) => {
+  await ctx.telegram.sendVideoNote(CHANNEL, ctx.message.video_note.file_id);
+});
+
 module.exports = adminRoute;
