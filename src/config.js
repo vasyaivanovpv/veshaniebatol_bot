@@ -1,5 +1,6 @@
 const config = {
   TOKEN: process.env.TOKEN_TEST,
+  MAIN_CHANNEL: process.env.CHANNEL_TEST,
   CHANNEL: process.env.CHANNEL_TEST,
   ADMIN_PVB: process.env.TEST_ADMIN_GROUP,
   CHANNEL_NAME: process.env.CHANNEL_NAME,
@@ -17,6 +18,7 @@ const config = {
 
 if (process.env.NODE_ENV === "production") {
   config.TOKEN = process.env.TOKEN;
+  config.MAIN_CHANNEL = process.env.MAIN_CHANNEL;
   config.CHANNEL = process.env.CHANNEL;
   config.ADMIN_PVB = process.env.ADMIN_PVB;
   config.REFEREE_CHANNEL = process.env.REFEREE_CHANNEL;

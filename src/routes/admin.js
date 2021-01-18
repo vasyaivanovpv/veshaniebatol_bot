@@ -1,6 +1,7 @@
 const {
   ADMIN_ID,
   CHANNEL,
+  MAIN_CHANNEL,
   REFEREE_CHANNEL,
   ACTIVE_SHEET,
 } = require("../config");
@@ -888,12 +889,15 @@ adminRoute.command("sendTracks", async (ctx) => {
 });
 
 adminRoute.on("voice", async (ctx) => {
-  await ctx.telegram.sendVoice(CHANNEL, ctx.message.voice.file_id, {
+  await ctx.telegram.sendVoice(MAIN_CHANNEL, ctx.message.voice.file_id, {
     caption: "#осколки",
   });
 });
 adminRoute.on("video_note", async (ctx) => {
-  await ctx.telegram.sendVideoNote(CHANNEL, ctx.message.video_note.file_id);
+  await ctx.telegram.sendVideoNote(
+    MAIN_CHANNEL,
+    ctx.message.video_note.file_id
+  );
 });
 
 module.exports = adminRoute;
