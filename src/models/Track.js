@@ -39,6 +39,10 @@ const schema = new Schema({
     default: "checking",
   },
   adminMessageId: String,
+  popularRate: {
+    type: Number,
+    default: 0,
+  },
 });
 
 const Track = model("Track", schema);

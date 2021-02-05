@@ -5,6 +5,10 @@ const typesQuery = {
   ACCEPT: "ACCEPT",
   ADD_SCORE: "ADD_SCORE",
   WIN_PAIR: "WIN_PAIR",
+  LIKE: "LIKE",
+  DISLIKE: "DISLIKE",
+  MAIN_MENU: "MAIN_MENU",
+  POPULAR_RATE: "POPULAR_RATE",
 };
 
 const textBlockLimits = {

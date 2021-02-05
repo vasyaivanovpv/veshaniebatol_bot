@@ -116,6 +116,12 @@ mainMenu.enter(async (ctx) => {
     ],
     [
       Markup.callbackButton(
+        "Оценить треки",
+        JSON.stringify({ type: typesQuery.POPULAR_RATE })
+      ),
+    ],
+    [
+      Markup.callbackButton(
         "Сдать трек",
         JSON.stringify({ type: typesQuery.SEND_TRACK })
       ),
@@ -127,7 +133,7 @@ mainMenu.enter(async (ctx) => {
     now > roundDB.finishedAt ||
     trackDB
   ) {
-    btns = btns.slice(0, 1);
+    btns = btns.slice(0, 2);
   }
 
   if (
@@ -195,6 +201,7 @@ mainMenu.on("callback_query", checkJSONmw, async (ctx) => {
 
       await ctx.answerCbQuery();
       return ctx.scene.enter("send_track");
+
     case typesQuery.UPDATE_INFO:
       if (now > roundDB.finishedAt && roundDB.innerStatus !== "ending") {
         roundDB.innerStatus = "scoring";
@@ -203,6 +210,11 @@ mainMenu.on("callback_query", checkJSONmw, async (ctx) => {
 
       await ctx.answerCbQuery();
       return ctx.scene.enter("main_menu");
+
+    case typesQuery.POPULAR_RATE:
+      await ctx.answerCbQuery();
+      return ctx.scene.enter("popular_rate");
+
     default:
       await ctx.replyWithMarkdown(
         `❗️ Используй кнопки в меню _Главное меню_.`

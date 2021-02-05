@@ -1,8 +1,10 @@
+const { ADMIN_PVB } = require("../../config");
+
 const Scene = require("telegraf/scenes/base");
 const Composer = require("telegraf/composer");
 const Markup = require("telegraf/markup");
 const rateLimit = require("telegraf-ratelimit");
-const { ADMIN_PVB } = require("../../config");
+const { downloadFIle, removeFile } = require("../../utils");
 const { typesQuery, trackSizeLimit, trackCaption } = require("../../constants");
 
 const User = require("../../models/User");
@@ -26,9 +28,6 @@ sendTrack.use(rateLimit(limitConfig));
 sendTrack.start(async (ctx) => {
   return ctx.scene.enter("main_menu");
 });
-sendTrack.command("cancel", async (ctx) => {
-  return ctx.scene.enter("main_menu");
-});
 
 sendTrack.enter(async (ctx) => {
   const roundDB = await Round.findOne({ status: "active" });
@@ -37,8 +36,6 @@ sendTrack.enter(async (ctx) => {
     `🏠 *Сдать трек* \n\nОтправь свой трек на ${roundDB.name} *в формате mp3* и размером *не более 20мб*. \n\nВНИМАНИЕ!\nЗагрузка может занять некоторое время, поэтому дождись ответа о том что трек принят на рассмотрение. \n\n_Вернуться в главное меню /cancel._`
   );
 });
-
-const { downloadFIle, removeFile } = require("../../utils");
 
 sendTrack.on(
   "audio",
