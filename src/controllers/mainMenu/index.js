@@ -116,6 +116,10 @@ mainMenu.enter(async (ctx) => {
     ],
     [
       Markup.callbackButton(
+        "ТОП-10",
+        JSON.stringify({ type: typesQuery.TOP_TRACKS })
+      ),
+      Markup.callbackButton(
         "Оценить треки",
         JSON.stringify({ type: typesQuery.POPULAR_RATE })
       ),
@@ -214,6 +218,10 @@ mainMenu.on("callback_query", checkJSONmw, async (ctx) => {
     case typesQuery.POPULAR_RATE:
       await ctx.answerCbQuery();
       return ctx.scene.enter("popular_rate");
+
+    case typesQuery.TOP_TRACKS:
+      await ctx.answerCbQuery();
+      return ctx.scene.enter("top_tracks");
 
     default:
       await ctx.replyWithMarkdown(

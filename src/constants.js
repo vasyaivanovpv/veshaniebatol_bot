@@ -9,6 +9,8 @@ const typesQuery = {
   DISLIKE: "DISLIKE",
   MAIN_MENU: "MAIN_MENU",
   POPULAR_RATE: "POPULAR_RATE",
+  TOP_TRACKS: "TOP_TRACKS",
+  GET_TRACK: "GET_TRACK",
 };
 
 const textBlockLimits = {

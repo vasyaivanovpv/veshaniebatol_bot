@@ -121,4 +121,13 @@ module.exports = {
     max = Math.floor(max);
     return Math.floor(Math.random() * (max - min + 1)) + min;
   },
+  splitArray: (arr, perChunk = 5) => {
+    let i, j, tempArr;
+    const resultArr = [];
+    for (i = 0, j = arr.length; i < j; i += perChunk) {
+      tempArr = arr.slice(i, i + perChunk);
+      resultArr.push(tempArr);
+    }
+    return resultArr;
+  },
 };

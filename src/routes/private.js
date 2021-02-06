@@ -10,11 +10,15 @@ const mainMenu = require("../controllers/mainMenu");
 const registration = require("../controllers/registration");
 const sendTrack = require("../controllers/sendTrack");
 const popularRate = require("../controllers/popularRate");
+const topTracks = require("../controllers/topTracks");
 
-const stage = new Stage([mainMenu, registration, sendTrack, popularRate], {
-  // ttl: 10,
-  // default: "main_menu",
-});
+const stage = new Stage(
+  [mainMenu, registration, sendTrack, popularRate, topTracks],
+  {
+    // ttl: 10,
+    // default: "main_menu",
+  }
+);
 
 const privateRoute = new Composer();
 privateRoute.use(session());

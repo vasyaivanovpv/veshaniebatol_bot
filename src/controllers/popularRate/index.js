@@ -91,13 +91,12 @@ popularRate.on("callback_query", async (ctx) => {
 
       ik = getIK(randomTrackIds.trackDbId);
 
-      await ctx.telegram.editMessageMedia(
-        ctx.chat.id,
-        trackMessageId,
-        null,
-        { type: "audio", media: randomTrackIds.trackId },
+      await ctx.editMessageReplyMarkup();
+      await ctx.replyWithAudio(
+        randomTrackIds.trackId,
         Markup.inlineKeyboard(ik).extra()
       );
+
       return ctx.answerCbQuery();
 
     case typesQuery.DISLIKE:
@@ -111,13 +110,12 @@ popularRate.on("callback_query", async (ctx) => {
 
       ik = getIK(randomTrackIds.trackDbId);
 
-      await ctx.telegram.editMessageMedia(
-        ctx.chat.id,
-        trackMessageId,
-        null,
-        { type: "audio", media: randomTrackIds.trackId },
+      await ctx.editMessageReplyMarkup();
+      await ctx.replyWithAudio(
+        randomTrackIds.trackId,
         Markup.inlineKeyboard(ik).extra()
       );
+
       return ctx.answerCbQuery();
 
     case typesQuery.MAIN_MENU:
