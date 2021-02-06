@@ -11,6 +11,7 @@ const typesQuery = {
   POPULAR_RATE: "POPULAR_RATE",
   TOP_TRACKS: "TOP_TRACKS",
   GET_TRACK: "GET_TRACK",
+  PERSONAL_TOP: "PERSONAL_TOP",
 };
 
 const textBlockLimits = {

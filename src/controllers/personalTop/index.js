@@ -5,6 +5,7 @@ const { splitArray } = require("../../utils");
 const { getTrackList } = require("../../helpers");
 
 const Track = require("../../models/Track");
+const User = require("../../models/User");
 
 const mainMenuBtn = [
   Markup.callbackButton(
@@ -33,30 +34,34 @@ const getIK = (items) => {
   return Markup.inlineKeyboard(ik).extra({ parse_mode: "markdown" });
 };
 
-const topTracks = new Scene("top_tracks");
+const personalTop = new Scene("personal_top");
 
-topTracks.start(async (ctx) => {
+personalTop.start(async (ctx) => {
   return ctx.scene.enter("main_menu");
 });
 
-topTracks.enter(async (ctx) => {
-  const topTrackDB = await Track.find({}, "popularRate", {
-    sort: { popularRate: -1 },
-    limit: 10,
-  })
+personalTop.enter(async (ctx) => {
+  const userDB = await User.findOne({ telegramId: ctx.from.id });
+  const personalTracksDB = await Track.find(
+    { user: userDB._id },
+    "popularRate",
+    {
+      sort: { popularRate: -1 },
+    }
+  )
     .populate("user")
     .populate("round");
 
-  const topTrackList = getTrackList(topTrackDB);
-  const ik = getIK(topTrackDB);
+  const personalTrackList = getTrackList(personalTracksDB);
+  const ik = getIK(personalTracksDB);
 
   await ctx.replyWithMarkdown(
-    `🌈 *ТОП-10* \n_Народное голосование_ \n\n${topTrackList}_Чтобы послушать трек из ТОП-10, нажми на кнопку с его номером._`,
+    `👶 *Личный ТОП* \n_Народное голосование_ \n\n${personalTrackList}_Чтобы послушать трек из Личного ТОПа, нажми на кнопку с его номером._`,
     ik
   );
 });
 
-topTracks.on("callback_query", async (ctx) => {
+personalTop.on("callback_query", async (ctx) => {
   const { type, id } = JSON.parse(ctx.callbackQuery.data);
 
   let trackDB;
@@ -77,8 +82,8 @@ topTracks.on("callback_query", async (ctx) => {
   }
 });
 
-topTracks.use(async (ctx) => {
+personalTop.use(async (ctx) => {
   return ctx.replyWithMarkdown(`❗️ Вернуться в главное меню /start`);
 });
 
-module.exports = topTracks;
+module.exports = personalTop;

@@ -57,6 +57,10 @@ popularRate.start(async (ctx) => {
 });
 
 popularRate.enter(async (ctx) => {
+  await ctx.replyWithMarkdown(
+    "🎶 *Оценить треки* \n\nБот присылаем вам случайным образом треки со всей базы ПВБ9. Треки могут присылаться повторно. Кнопка 💖 это +1 балл, а кнопка 💩 это -1 балл."
+  );
+
   const { trackDbId, trackId } = await getRandomTrackId();
 
   const ik = getIK(trackDbId);

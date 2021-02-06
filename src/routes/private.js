@@ -11,9 +11,10 @@ const registration = require("../controllers/registration");
 const sendTrack = require("../controllers/sendTrack");
 const popularRate = require("../controllers/popularRate");
 const topTracks = require("../controllers/topTracks");
+const personalTop = require("../controllers/personalTop");
 
 const stage = new Stage(
-  [mainMenu, registration, sendTrack, popularRate, topTracks],
+  [mainMenu, registration, sendTrack, popularRate, topTracks, personalTop],
   {
     // ttl: 10,
     // default: "main_menu",

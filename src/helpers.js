@@ -1,16 +1,4 @@
-const {
-  escapeRegExp,
-  toHashTag,
-  isJSONString,
-  formatPrice,
-} = require("./utils");
-const {
-  textBlockLimits,
-  realEstate,
-  numberRoomTags,
-  comfortTypes,
-  typesUser,
-} = require("./constants");
+const { isJSONString } = require("./utils");
 
 const checkJSONmw = async (ctx, next) => {
   if (!isJSONString(ctx.callbackQuery.data)) {
@@ -21,6 +9,15 @@ const checkJSONmw = async (ctx, next) => {
   }
 };
 
+const getTrackList = (tracks) =>
+  tracks.reduce((acc, track, i) => {
+    acc += `*${i + 1}.* *${track.user.rapName}* *(${track.popularRate})*\n${
+      track.round.theme
+    }\n${track.round.name}\n\n`;
+    return acc;
+  }, "");
+
 module.exports = {
   checkJSONmw,
+  getTrackList,
 };

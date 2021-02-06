@@ -107,6 +107,25 @@ mainMenu.enter(async (ctx) => {
       : "Еще не сдал трек";
   const finishedAt = toStringDate(roundDB.finishedAt);
 
+  let topBtns = [
+    Markup.callbackButton(
+      "ТОП-10",
+      JSON.stringify({ type: typesQuery.TOP_TRACKS })
+    ),
+    Markup.callbackButton(
+      "Личный ТОП",
+      JSON.stringify({ type: typesQuery.PERSONAL_TOP })
+    ),
+  ];
+
+  const countPersonalTracksDB = await Track.countDocuments({
+    user: userDB._id,
+  });
+
+  if (!countPersonalTracksDB) {
+    topBtns = topBtns.slice(0, 1);
+  }
+
   let btns = [
     [
       Markup.callbackButton(
@@ -114,13 +133,10 @@ mainMenu.enter(async (ctx) => {
         JSON.stringify({ type: typesQuery.UPDATE_INFO })
       ),
     ],
+    topBtns,
     [
       Markup.callbackButton(
-        "ТОП-10",
-        JSON.stringify({ type: typesQuery.TOP_TRACKS })
-      ),
-      Markup.callbackButton(
-        "Оценить треки",
+        "💩 ОЦЕНИТЬ ТРЕКИ 💖",
         JSON.stringify({ type: typesQuery.POPULAR_RATE })
       ),
     ],
@@ -137,7 +153,7 @@ mainMenu.enter(async (ctx) => {
     now > roundDB.finishedAt ||
     trackDB
   ) {
-    btns = btns.slice(0, 2);
+    btns = btns.slice(0, 3);
   }
 
   if (
@@ -222,6 +238,16 @@ mainMenu.on("callback_query", checkJSONmw, async (ctx) => {
     case typesQuery.TOP_TRACKS:
       await ctx.answerCbQuery();
       return ctx.scene.enter("top_tracks");
+
+    case typesQuery.PERSONAL_TOP:
+      const countPersonalTracksDB = await Track.countDocuments({
+        user: userDB._id,
+      });
+      if (!countPersonalTracksDB)
+        return ctx.answerCbQuery(`У тебя нет треков!`);
+
+      await ctx.answerCbQuery();
+      return ctx.scene.enter("personal_top");
 
     default:
       await ctx.replyWithMarkdown(
