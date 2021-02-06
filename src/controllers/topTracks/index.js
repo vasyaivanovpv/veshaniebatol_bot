@@ -50,7 +50,7 @@ topTracks.enter(async (ctx) => {
   const topTrackList = topTrackDB.reduce((acc, track, i) => {
     acc += `${i + 1}. *${track.user.rapName}* *(${track.popularRate})*\n${
       track.round.theme
-    } (${track.round.name})\n`;
+    }\n${track.round.name}\n`;
     return acc;
   }, "");
 
