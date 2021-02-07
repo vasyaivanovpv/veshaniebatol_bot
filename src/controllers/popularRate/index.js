@@ -1,9 +1,25 @@
 const Scene = require("telegraf/scenes/base");
 const Markup = require("telegraf/markup");
+const rateLimit = require("telegraf-ratelimit");
 const { typesQuery } = require("../../constants");
-const { getRandomInt } = require("../../utils");
+const { shuffleArray } = require("../../utils");
 
 const Track = require("../../models/Track");
+const User = require("../../models/User");
+
+const limitConfig = {
+  window: 3 * 1000,
+  limit: 1,
+  keyGenerator: function (ctx) {
+    return ctx.chat.id;
+  },
+  onLimitExceeded: async (ctx) => {
+    if (ctx.callbackQuery) {
+      await ctx.answerCbQuery();
+    }
+    await ctx.reply("❗️ Не спеши, послушай сначала трек!");
+  },
+};
 
 const actionBtnValues = [
   { type: typesQuery.DISLIKE, text: "💩" },
@@ -33,100 +49,88 @@ const getIK = (trackDbId) => {
   return [actionBtns, mainMenuBtn];
 };
 
-const getRandomSkip = async () => {
-  const numberOfTracks = await Track.estimatedDocumentCount();
-  return getRandomInt(0, numberOfTracks - 1);
-};
+const sendNextTrack = async (ctx) => {
+  const userDB = await User.findOne({ telegramId: ctx.from.id });
+  if (!userDB.tempRateTracks.length) {
+    await ctx.replyWithMarkdown(
+      `❗️ Ты оценил все треки! Но можешь еще раз сделать это!`
+    );
+    return ctx.scene.enter("popular_rate");
+  }
 
-const getRandomTrackId = async () => {
-  const randomSkip = await getRandomSkip();
-  const trackDB = await Track.findOne({}, null, {
-    skip: randomSkip,
-    sort: {
-      uploadedAt: 1,
-    },
-  });
+  const firstTrackId = userDB.tempRateTracks.shift();
+  await userDB.save();
 
-  return { trackDbId: trackDB._id.toString(), trackId: trackDB.trackId };
+  const trackDB = await Track.findById(firstTrackId);
+  const ik = getIK(firstTrackId);
+
+  await ctx.editMessageReplyMarkup();
+  await ctx.replyWithAudio(trackDB.trackId, Markup.inlineKeyboard(ik).extra());
 };
 
 const popularRate = new Scene("popular_rate");
+
+popularRate.use(rateLimit(limitConfig));
 
 popularRate.start(async (ctx) => {
   return ctx.scene.enter("main_menu");
 });
 
 popularRate.enter(async (ctx) => {
+  const userDB = await User.findOne({ telegramId: ctx.from.id });
+  const tracksDB = await Track.find({ user: { $ne: userDB._id } }, "_id");
+  if (!tracksDB.length) {
+    await ctx.replyWithMarkdown(
+      `❗️ Нет треков для оценивания! Вернуться в главное меню /start`
+    );
+    return ctx.scene.enter("main_menu");
+  }
+
   await ctx.replyWithMarkdown(
-    "🎶 *Оценить треки* \n\nБот присылает вам случайным образом треки со всей базы ПВБ9. Треки могут присылаться повторно. Кнопка 💖 это +1 балл, а кнопка 💩 это -1 балл."
+    "🎶 *Оценить треки* \n\n*Новый алгоритм!* Бот присылает вам случайным образом треки со всей базы ПВБ9. С этого момента репер не сможет оценить свои треки, а все остальные *не будут повторяться*, но можно оценить еще раз все треки в новой сессии. Кнопка 💖 это +1 балл, а кнопка 💩 это -1 балл."
   );
 
-  const { trackDbId, trackId } = await getRandomTrackId();
+  const trackIds = tracksDB.map((track) => track._id.toString());
+  shuffleArray(trackIds);
 
-  const ik = getIK(trackDbId);
+  const firstTrackId = trackIds.shift();
 
-  const trackMessage = await ctx.replyWithAudio(
-    trackId,
-    Markup.inlineKeyboard(ik).extra()
-  );
+  userDB.tempRateTracks = trackIds;
+  await userDB.save();
 
-  ctx.session.trackMessageId = trackMessage.message_id;
-});
+  const trackDB = await Track.findById(firstTrackId);
+  const ik = getIK(firstTrackId);
 
-popularRate.leave(async (ctx) => {
-  delete ctx.session.trackMessageId;
+  return ctx.replyWithAudio(trackDB.trackId, Markup.inlineKeyboard(ik).extra());
 });
 
 popularRate.on("callback_query", async (ctx) => {
   const { type, id } = JSON.parse(ctx.callbackQuery.data);
-  const { trackMessageId } = ctx.session;
 
-  let trackDB, ik, randomTrackIds;
+  let prevTrackDB;
 
   switch (type) {
     case typesQuery.LIKE:
-      trackDB = await Track.findById(id);
-      trackDB.popularRate = trackDB.popularRate + 1;
-      await trackDB.save();
+      prevTrackDB = await Track.findById(id);
+      prevTrackDB.popularRate = prevTrackDB.popularRate + 1;
+      await prevTrackDB.save();
 
-      do {
-        randomTrackIds = await getRandomTrackId();
-      } while (id === randomTrackIds.trackDbId);
-
-      ik = getIK(randomTrackIds.trackDbId);
-
-      await ctx.editMessageReplyMarkup();
-      await ctx.replyWithAudio(
-        randomTrackIds.trackId,
-        Markup.inlineKeyboard(ik).extra()
-      );
-
-      return ctx.answerCbQuery();
+      await ctx.answerCbQuery();
+      return sendNextTrack(ctx);
 
     case typesQuery.DISLIKE:
-      trackDB = await Track.findById(id);
-      trackDB.popularRate = trackDB.popularRate - 1;
-      await trackDB.save();
+      prevTrackDB = await Track.findById(id);
+      prevTrackDB.popularRate = prevTrackDB.popularRate - 1;
+      await prevTrackDB.save();
 
-      do {
-        randomTrackIds = await getRandomTrackId();
-      } while (id === randomTrackIds.trackDbId);
-
-      ik = getIK(randomTrackIds.trackDbId);
-
-      await ctx.editMessageReplyMarkup();
-      await ctx.replyWithAudio(
-        randomTrackIds.trackId,
-        Markup.inlineKeyboard(ik).extra()
-      );
-
-      return ctx.answerCbQuery();
+      await ctx.answerCbQuery();
+      return sendNextTrack(ctx);
 
     case typesQuery.MAIN_MENU:
       await ctx.answerCbQuery();
       return ctx.scene.enter("main_menu");
     default:
-      return ctx.answerCbQuery("🖕🖕🖕");
+      return ctx.answerCbQuery("Используй актуальные кнопки");
   }
 });
 

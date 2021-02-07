@@ -506,7 +506,7 @@ adminRoute.hears(
     if (ctx.from.id !== +ADMIN_ID)
       return ctx.replyWithMarkdown("❗️ Только Вася Иванов имеют такую силу)!");
 
-    ctx.tempMessage = ctx.match[1];
+    ctx.state.tempMessage = ctx.match[1];
 
     return next();
   },
@@ -519,7 +519,7 @@ adminRoute.hears(
       try {
         await ctx.telegram.sendMessage(
           user.telegramId,
-          `❗️ *Уведомление* \n\n${ctx.tempMessage}`,
+          `❗️ *Уведомление* \n\n${ctx.state.tempMessage}`,
           { parse_mode: "Markdown" }
         );
       } catch (err) {
@@ -535,7 +535,7 @@ adminRoute.hears(
       await sleep(100);
     }
 
-    delete ctx.tempMessage;
+    delete ctx.state.tempMessage;
 
     const blockedUsersDB = await User.find({ blocked: true });
     const deliverUsersDB = usersDB.length - blockedUsersDB.length;
