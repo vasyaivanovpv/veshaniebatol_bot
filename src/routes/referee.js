@@ -235,12 +235,19 @@ refereeRoute.on(
         );
         trackDB = await Track.findOne({ adminMessageId: win }).populate("user");
         trackUserPhrase = `Пара *${trackDB.user.rapName}* и *${loserDB.user.rapName}* получила оценки от ВСЕХ судей`;
+
         actualRow = trackDB.user.currentSheetRow;
+        loserRow = trackDB.user.currentSheetRow;
+
         actualColumn = refereeDB.sheetColumn;
         actualCell = actualColumn + actualRow;
+        loserCell = actualColumn + loserRow;
 
-        await firstSheet.loadCells(actualCell);
+        const loadRange = [actualCell, loserCell].sort().join(":");
+
+        await firstSheet.loadCells(loadRange);
         currentCell = firstSheet.getCellByA1(actualCell);
+        currentLoserCell = firstSheet.getCellByA1(loserCell);
 
         scoreIndex = trackDB.scores.findIndex(
           (objScore) => objScore.referee === ctx.from.id
@@ -277,6 +284,7 @@ refereeRoute.on(
           );
 
           currentCell.value = 1;
+          currentLoserCell.value = 0;
           await firstSheet.saveUpdatedCells();
           doc.resetLocalCache();
 
@@ -315,6 +323,7 @@ refereeRoute.on(
         );
 
         currentCell.value = 1;
+        currentLoserCell.value = 0;
 
         await ctx.answerCbQuery(trackDB.user.rapName);
         break;
