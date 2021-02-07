@@ -500,43 +500,51 @@ adminRoute.hears(/^showScoreUser (.+)/, async (ctx) => {
   );
 });
 
-adminRoute.hears(/^sendMessage (.+)/, async (ctx) => {
-  if (ctx.from.id !== +ADMIN_ID)
-    return ctx.replyWithMarkdown("❗️ Только Вася Иванов имеют такую силу)!");
+adminRoute.hears(
+  /^sendMessage (.+)/,
+  async (ctx, next) => {
+    if (ctx.from.id !== +ADMIN_ID)
+      return ctx.replyWithMarkdown("❗️ Только Вася Иванов имеют такую силу)!");
 
-  const message = ctx.match[1];
+    ctx.tempMessage = ctx.match[1];
 
-  const usersDB = await User.find({}, "telegramId blocked");
+    return next();
+  },
+  Composer.fork(async (ctx) => {
+    const usersDB = await User.find({}, "telegramId blocked");
 
-  for (const user of usersDB) {
-    if (user.blocked) continue;
+    for (const user of usersDB) {
+      if (user.blocked) continue;
 
-    try {
-      await ctx.telegram.sendMessage(
-        user.telegramId,
-        `❗️ *Уведомление* \n\n${message}`,
-        { parse_mode: "Markdown" }
-      );
-    } catch (err) {
-      console.log(`Send message failed: ${err}`);
-
-      if (err.code === 403) {
-        await User.updateOne(
-          { telegramId: user.telegramId },
-          { blocked: true }
+      try {
+        await ctx.telegram.sendMessage(
+          user.telegramId,
+          `❗️ *Уведомление* \n\n${ctx.tempMessage}`,
+          { parse_mode: "Markdown" }
         );
+      } catch (err) {
+        console.log(`Send message failed: ${err}`);
+
+        if (err.code === 403) {
+          await User.updateOne(
+            { telegramId: user.telegramId },
+            { blocked: true }
+          );
+        }
       }
+      await sleep(100);
     }
-    await sleep(100);
-  }
 
-  const blockedUsersDB = await User.find({ blocked: true });
-  const deliverUsersDB = usersDB.length - blockedUsersDB.length;
+    delete ctx.tempMessage;
 
-  return ctx.replyWithMarkdown(
-    `❗️ Всего реперов ${usersDB.length} = ${deliverUsersDB} + ${blockedUsersDB.length}.`
-  );
-});
+    const blockedUsersDB = await User.find({ blocked: true });
+    const deliverUsersDB = usersDB.length - blockedUsersDB.length;
+
+    return ctx.replyWithMarkdown(
+      `❗️ Всего реперов ${usersDB.length} = ${deliverUsersDB} + ${blockedUsersDB.length}.`
+    );
+  })
+);
 
 adminRoute.on("callback_query", async (ctx) => {
   const { data } = ctx.callbackQuery;
