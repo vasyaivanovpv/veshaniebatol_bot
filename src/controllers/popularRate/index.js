@@ -78,6 +78,24 @@ popularRate.start(async (ctx) => {
 
 popularRate.enter(async (ctx) => {
   const userDB = await User.findOne({ telegramId: ctx.from.id });
+  if (userDB.tempRateTracks.length) {
+    await ctx.replyWithMarkdown(
+      "🎶 *Оценить треки* \n\nПродолжаем предыдущую сессию. Кнопка 💖 это +1 балл, а кнопка 💩 это -1 балл."
+    );
+
+    const firstTrackId = userDB.tempRateTracks.shift();
+    await userDB.save();
+
+    const trackDB = await Track.findById(firstTrackId);
+    const ik = getIK(firstTrackId);
+
+    await ctx.editMessageReplyMarkup();
+    return ctx.replyWithAudio(
+      trackDB.trackId,
+      Markup.inlineKeyboard(ik).extra()
+    );
+  }
+
   const tracksDB = await Track.find({ user: { $ne: userDB._id } }, "_id");
   if (!tracksDB.length) {
     await ctx.replyWithMarkdown(
@@ -87,7 +105,7 @@ popularRate.enter(async (ctx) => {
   }
 
   await ctx.replyWithMarkdown(
-    "🎶 *Оценить треки* \n\n*Новый алгоритм!* Бот присылает вам случайным образом треки со всей базы ПВБ9. С этого момента репер не сможет оценить свои треки, а все остальные *не будут повторяться*, но можно оценить еще раз все треки в новой сессии. Кнопка 💖 это +1 балл, а кнопка 💩 это -1 балл."
+    "🎶 *Оценить треки* \n\n*Новый алгоритм!* Бот присылает вам случайным образом треки со всей базы ПВБ9. С этого момента репер не сможет оценить свои треки, а все остальные *не будут повторяться*, но можно оценить еще раз все треки в новой сессии. Если сессию завершить не полностью, то при следующем заходе она восстановится! Кнопка 💖 это +1 балл, а кнопка 💩 это -1 балл."
   );
 
   const trackIds = tracksDB.map((track) => track._id.toString());
@@ -102,6 +120,12 @@ popularRate.enter(async (ctx) => {
   const ik = getIK(firstTrackId);
 
   return ctx.replyWithAudio(trackDB.trackId, Markup.inlineKeyboard(ik).extra());
+});
+
+popularRate.leave(async (ctx) => {
+  const userDB = await User.findOne({ telegramId: ctx.from.id });
+  userDB.tempRateTracks = [];
+  await userDB.save();
 });
 
 popularRate.on("callback_query", async (ctx) => {

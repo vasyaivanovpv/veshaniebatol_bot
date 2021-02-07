@@ -237,7 +237,7 @@ refereeRoute.on(
         trackUserPhrase = `Пара *${trackDB.user.rapName}* и *${loserDB.user.rapName}* получила оценки от ВСЕХ судей`;
 
         actualRow = trackDB.user.currentSheetRow;
-        loserRow = trackDB.user.currentSheetRow;
+        loserRow = loserDB.user.currentSheetRow;
 
         actualColumn = refereeDB.sheetColumn;
         actualCell = actualColumn + actualRow;
