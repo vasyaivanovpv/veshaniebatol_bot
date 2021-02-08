@@ -40,7 +40,7 @@ topTracks.start(async (ctx) => {
 });
 
 topTracks.enter(async (ctx) => {
-  const topTrackDB = await Track.find({}, "popularRate", {
+  const topTrackDB = await Track.find({}, "popularRate rateUsers", {
     sort: { popularRate: -1 },
     limit: 10,
   })

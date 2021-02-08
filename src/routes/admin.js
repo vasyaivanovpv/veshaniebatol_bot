@@ -34,7 +34,7 @@ adminRoute.command("commands", async (ctx) => {
     return ctx.replyWithMarkdown("❗️ Только Вася Иванов имеют такую силу)!");
 
   return ctx.replyWithMarkdown(
-    `*Команды* \n\naddReferee 5234523\\*столбец(F)\\*пикуль \naddRound 1\\*1 РАУНД ПВБ9\\*парный0-1 \nremoveRound 1 \nstartNextRound Тема\\*Кол судей\\*10.10.2020 \nsetMinScore 40 \neditCountReferee 5 \nshowScoreUser Никнейм \nbyeUser Никнейм \n\n/listRounds список раундов \n/finishScoring закончить судейство \n/sendTracks прислать судьям все треки`
+    `*Команды* \n\n\nsendMessage text text text\naddReferee 5234523\\*столбец(F)\\*пикуль \naddRound 1\\*1 РАУНД ПВБ9\\*парный0-1 \nremoveRound 1 \nstartNextRound Тема\\*Кол судей\\*10.10.2020 \nsetMinScore 40 \neditCountReferee 5 \nshowScoreUser Никнейм \nbyeUser Никнейм \n\n/listRounds список раундов \n/finishScoring закончить судейство \n/sendTracks прислать судьям все треки \n/clearRating очистить результаты рейтинга`
   );
 });
 
@@ -44,6 +44,20 @@ adminRoute.command("test", async (ctx) => {
     await ctx.replyWithMarkdown("❗️ Таблицы НЕ работают!");
   }
   await ctx.replyWithMarkdown("❗️ Таблицы работают!");
+});
+
+adminRoute.command("clearRating", async (ctx) => {
+  const res = await Track.updateMany({}, { popularRate: 0, rateUsers: [] });
+  await ctx.replyWithMarkdown(
+    `❗️ Найдено документов: ${res.n} и обновлено: ${res.nModified}`
+  );
+});
+
+adminRoute.command("deleteUsersPropertyTempRateTracks", async (ctx) => {
+  const res = await User.updateMany({}, { $unset: { tempRateTracks: "" } });
+  await ctx.replyWithMarkdown(
+    `❗️ Найдено документов: ${res.n} и обновлено: ${res.nModified}`
+  );
 });
 
 adminRoute.command("listRounds", async (ctx) => {

@@ -44,7 +44,7 @@ personalTop.enter(async (ctx) => {
   const userDB = await User.findOne({ telegramId: ctx.from.id });
   const personalTracksDB = await Track.find(
     { user: userDB._id },
-    "popularRate",
+    "popularRate rateUsers",
     {
       sort: { popularRate: -1 },
     }

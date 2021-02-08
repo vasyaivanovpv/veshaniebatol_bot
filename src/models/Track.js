@@ -43,6 +43,10 @@ const schema = new Schema({
     type: Number,
     default: 0,
   },
+  rateUsers: {
+    type: [String],
+    default: [],
+  },
 });
 
 const Track = model("Track", schema);

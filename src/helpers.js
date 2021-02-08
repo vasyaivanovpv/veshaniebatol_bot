@@ -11,9 +11,9 @@ const checkJSONmw = async (ctx, next) => {
 
 const getTrackList = (tracks) =>
   tracks.reduce((acc, track, i) => {
-    acc += `*${i + 1}.* *${track.user.rapName}* *(${track.popularRate})*\n${
-      track.round.theme
-    }\n${track.round.name}\n\n`;
+    acc += `*${i + 1}.* *${track.user.rapName}* *(${track.popularRate}/${
+      track.rateUsers.length
+    })*\n${track.round.theme}\n${track.round.name}\n\n`;
     return acc;
   }, "");
 

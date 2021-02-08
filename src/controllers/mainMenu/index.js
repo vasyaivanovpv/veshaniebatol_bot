@@ -232,8 +232,11 @@ mainMenu.on("callback_query", checkJSONmw, async (ctx) => {
       return ctx.scene.enter("main_menu");
 
     case typesQuery.POPULAR_RATE:
-      const countTrackDB = await Track.countDocuments();
-      if (!countTrackDB) return ctx.answerCbQuery(`Треков нет в базе!`);
+      const countTrackDB = await Track.countDocuments({
+        user: { $ne: userDB._id },
+        rateUsers: { $ne: ctx.from.id },
+      });
+      if (!countTrackDB) return ctx.answerCbQuery(`Нет треков для оценивания!`);
       await ctx.answerCbQuery();
       return ctx.scene.enter("popular_rate");
 
