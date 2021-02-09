@@ -18,10 +18,6 @@ const schema = new Schema({
     enum: ["empty", "active", "finished"],
     default: "empty",
   },
-  tempRateTracks: {
-    type: [String],
-    default: [],
-  },
 });
 
 const User = model("User", schema);
