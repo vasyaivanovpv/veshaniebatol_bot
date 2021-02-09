@@ -2,9 +2,11 @@ const Scene = require("telegraf/scenes/base");
 const Markup = require("telegraf/markup");
 const rateLimit = require("telegraf-ratelimit");
 const { typesQuery } = require("../../constants");
+const { splitArray } = require("../../utils");
 
 const Track = require("../../models/Track");
 const User = require("../../models/User");
+const Round = require("../../models/Round");
 
 const limitConfig = {
   window: 1 * 1000,
@@ -21,8 +23,8 @@ const limitConfig = {
 };
 
 const actionBtnValues = [
-  { type: typesQuery.DISLIKE, text: "💩" },
-  { type: typesQuery.LIKE, text: "💖" },
+  { text: "💩", value: 0 },
+  { text: "💖", value: 1 },
 ];
 
 const mainMenuBtn = [
@@ -34,39 +36,52 @@ const mainMenuBtn = [
   ),
 ];
 
-const getIK = (trackDbId) => {
-  const actionBtns = actionBtnValues.map((value) =>
+const selectRoundBtn = [
+  Markup.callbackButton(
+    "Выбрать раунд",
+    JSON.stringify({
+      type: typesQuery.ROUND_LIST,
+    })
+  ),
+];
+
+const getTrackIK = (trackDBid) => {
+  const actionBtns = actionBtnValues.map((btn) =>
     Markup.callbackButton(
-      value.text,
+      btn.text,
       JSON.stringify({
-        type: value.type,
-        id: trackDbId,
+        type: typesQuery.LIKE,
+        id: trackDBid,
+        v: btn.value,
       })
     )
   );
 
-  return [actionBtns, mainMenuBtn];
+  return [actionBtns, selectRoundBtn];
 };
 
-const sendNextTrack = async (ctx) => {
-  const filter = await getFilter(ctx.from.id);
-  const trackDB = await Track.findOne(filter, "trackId", {
-    sort: { uploadedAt: 1 },
-  });
-  if (!trackDB) return ctx.scene.enter("main_menu");
+const getRoundIK = async () => {
+  const roundsDB = await Round.find(
+    { status: ["active", "finished"] },
+    "name",
+    { sort: { index: 1 } }
+  );
 
-  const ik = getIK(trackDB._id.toString());
+  const btns = roundsDB.map((round) =>
+    Markup.callbackButton(
+      round.name.split(" ")[0],
+      JSON.stringify({
+        type: typesQuery.SELECT_ROUND,
+        id: round._id.toString(),
+      })
+    )
+  );
 
-  await ctx.editMessageReplyMarkup();
-  return ctx.replyWithAudio(trackDB.trackId, Markup.inlineKeyboard(ik).extra());
-};
+  const ik = splitArray(btns);
 
-const getFilter = async (userTgId) => {
-  const userDB = await User.findOne({ telegramId: userTgId });
-  return {
-    user: { $ne: userDB._id },
-    rateUsers: { $ne: userTgId },
-  };
+  ik.push(mainMenuBtn);
+
+  return ik;
 };
 
 const popularRate = new Scene("popular_rate");
@@ -78,32 +93,38 @@ popularRate.start(async (ctx) => {
 });
 
 popularRate.enter(async (ctx) => {
-  const filter = await getFilter(ctx.from.id);
+  const promoRoundDB = await Round.findOne({ index: 0 });
+  const userDB = await User.findOne({ telegramId: ctx.from.id });
 
-  const countTracksDB = await Track.countDocuments(filter);
+  ctx.session.rateOptions = {
+    userDBid: userDB._id.toString(),
+    roundDBid: promoRoundDB._id.toString(),
+  };
+
+  const countTracksDB = await Track.countDocuments({
+    user: { $ne: ctx.session.rateOptions.userDBid },
+    rateUsers: { $ne: ctx.from.id },
+  });
   if (!countTracksDB) {
     await ctx.replyWithMarkdown(`❗️ Нет треков для оценивания!`);
     return ctx.scene.enter("main_menu");
   }
 
-  await ctx.replyWithMarkdown(
-    "🎶 *Оценить треки* \n\n*Новый алгоритм!* Бот присылает тебе по порядку все треки начиная с промо раунда ПВБ9. С этого момента репер не сможет оценить свои треки, а все остальные *не будут повторяться*. Таким образом каждый трек с батла получится оценить *только один раз*! Кнопка 💖 это +1 балл, а кнопка 💩 это 0 баллов."
-  );
-  await ctx.replyWithMarkdown(
-    `❗️ Остались без твоей оценки: *${countTracksDB}!*`
-  );
+  const roundIK = await getRoundIK();
 
-  const trackDB = await Track.findOne(filter, "trackId", {
-    sort: { uploadedAt: 1 },
-  });
-  const ik = getIK(trackDB._id.toString());
-
-  return ctx.replyWithAudio(trackDB.trackId, Markup.inlineKeyboard(ik).extra());
+  await ctx.replyWithMarkdown(
+    `🎶 *Оценить треки* \n\n*Новый алгоритм!* Бот присылает тебе по порядку все треки начиная с выбранного тобой раунда ПВБ9. С этого момента репер не сможет оценить свои треки, а все остальные *не будут повторяться*. Таким образом каждый трек с батла получится оценить *только один раз*! Кнопка 💖 это +1 балл, а кнопка 💩 это 0 баллов. \n\nВсего треков без твоей оценки: *${countTracksDB}!* \n\n*ВЫБЕРИ РАУНД!*`,
+    Markup.inlineKeyboard(roundIK, { columns: 5 }).extra()
+  );
 });
 
 popularRate.leave(async (ctx) => {
-  const filter = await getFilter(ctx.from.id);
-  const countTracksDB = await Track.countDocuments(filter);
+  const countTracksDB = await Track.countDocuments({
+    user: { $ne: ctx.session.rateOptions.userDBid },
+    rateUsers: { $ne: ctx.from.id },
+  });
+
+  delete ctx.session.rateOptions;
 
   await ctx.replyWithMarkdown(
     `❗️ Остались без твоей оценки: *${countTracksDB}!*`
@@ -111,29 +132,92 @@ popularRate.leave(async (ctx) => {
 });
 
 popularRate.on("callback_query", async (ctx) => {
-  const { type, id } = JSON.parse(ctx.callbackQuery.data);
+  const { type, id, v } = JSON.parse(ctx.callbackQuery.data);
 
-  let trackDB;
+  let trackDB, roundIK, trackIK;
 
   switch (type) {
+    case typesQuery.SELECT_ROUND:
+      trackDB = await Track.findOne(
+        {
+          user: { $ne: ctx.session.rateOptions.userDBid },
+          round: id,
+          rateUsers: { $ne: ctx.from.id },
+        },
+        "trackId",
+        {
+          sort: { uploadedAt: 1 },
+        }
+      );
+
+      if (!trackDB) return ctx.answerCbQuery(`Нет треков для оценивания!`);
+
+      ctx.session.rateOptions.roundDBid = id;
+
+      const roundDB = await Round.findById(id);
+      trackIK = getTrackIK(trackDB._id.toString());
+
+      await ctx.replyWithMarkdown(`❗️ Ты выбрал *${roundDB.name}*!`);
+
+      await ctx.editMessageReplyMarkup();
+      await ctx.answerCbQuery();
+      return ctx.replyWithAudio(
+        trackDB.trackId,
+        Markup.inlineKeyboard(trackIK).extra()
+      );
+
     case typesQuery.LIKE:
       trackDB = await Track.findById(id);
-      trackDB.popularRate = trackDB.popularRate + 1;
+      trackDB.popularRate = trackDB.popularRate + v;
       trackDB.rateUsers.push(ctx.from.id);
       await trackDB.save();
 
-      await ctx.answerCbQuery();
-      return sendNextTrack(ctx);
+      trackDB = await Track.findOne(
+        {
+          user: { $ne: ctx.session.rateOptions.userDBid },
+          round: ctx.session.rateOptions.roundDBid,
+          rateUsers: { $ne: ctx.from.id },
+        },
+        "trackId",
+        {
+          sort: { uploadedAt: 1 },
+        }
+      );
 
-    case typesQuery.DISLIKE:
-      trackDB = await Track.findById(id);
-      trackDB.rateUsers.push(ctx.from.id);
-      await trackDB.save();
+      if (!trackDB) {
+        roundIK = await getRoundIK();
 
+        await ctx.editMessageReplyMarkup();
+        await ctx.replyWithMarkdown(`❗️ С этого раунда закончились треки!`);
+        return ctx.replyWithMarkdown(
+          `❗️ Выбери раунд, треки которого будешь оценивать!`,
+          Markup.inlineKeyboard(roundIK, { columns: 5 }).extra()
+        );
+      }
+
+      trackIK = getTrackIK(trackDB._id.toString());
+
+      await ctx.editMessageReplyMarkup();
       await ctx.answerCbQuery();
-      return sendNextTrack(ctx);
+      return ctx.replyWithAudio(
+        trackDB.trackId,
+        Markup.inlineKeyboard(trackIK).extra()
+      );
+
+    case typesQuery.ROUND_LIST:
+      roundIK = await getRoundIK();
+
+      await ctx.editMessageReplyMarkup();
+
+      await ctx.replyWithMarkdown(
+        `❗️ Выбери раунд, треки которого будешь оценивать!`,
+        Markup.inlineKeyboard(roundIK, { columns: 5 }).extra()
+      );
+
+      return ctx.answerCbQuery();
 
     case typesQuery.MAIN_MENU:
+      await ctx.editMessageReplyMarkup();
       await ctx.answerCbQuery();
       return ctx.scene.enter("main_menu");
     default:

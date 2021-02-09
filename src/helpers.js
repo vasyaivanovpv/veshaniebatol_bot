@@ -1,4 +1,4 @@
-const { isJSONString } = require("./utils");
+const { isJSONString, splitArray } = require("./utils");
 
 const checkJSONmw = async (ctx, next) => {
   if (!isJSONString(ctx.callbackQuery.data)) {

@@ -53,27 +53,6 @@ adminRoute.command("clearRating", async (ctx) => {
   );
 });
 
-adminRoute.command("recount", async (ctx) => {
-  let newPopularRate,
-    res,
-    counter = 0;
-  const tracksDB = await Track.find({}, "popularRate rateUsers");
-
-  for (const track of tracksDB) {
-    newPopularRate =
-      (track.rateUsers.length - track.popularRate) / 2 + track.popularRate;
-    res = await Track.updateOne(
-      { _id: track._id },
-      { popularRate: newPopularRate }
-    );
-    counter += res.nModified;
-  }
-
-  await ctx.replyWithMarkdown(
-    `❗️ Найдено документов: ${tracksDB.length} и обновлено: ${counter}`
-  );
-});
-
 adminRoute.command("listRounds", async (ctx) => {
   if (ctx.from.id !== +ADMIN_ID)
     return ctx.replyWithMarkdown("❗️ Только Вася Иванов имеют такую силу)!");
