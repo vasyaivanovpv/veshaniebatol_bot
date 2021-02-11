@@ -645,6 +645,26 @@ adminRoute.on("callback_query", async (ctx) => {
           pair: trackDB.pair,
           status: "accept",
         }).populate("user");
+        const vsUserDB = await User.findOne({
+          status: "active",
+          currentPair: trackDB.pair,
+          rapName: { $ne: userDB.rapName },
+        });
+
+        try {
+          await ctx.telegram.sendMessage(
+            vsUserDB.telegramId,
+            `❗️ *Уведомление* \n\nТвой оппонент сдал трек на раунд! Трек ищи в голосовалке бота или здесь @pvb\\_tracks`,
+            Extra.markdown()
+          );
+        } catch (err) {
+          console.log(`Send message failed: ${err}`);
+
+          if (err.code === 403) {
+            vsUserDB.blocked = true;
+            await vsUserDB.save();
+          }
+        }
 
         if (tracksPairDB.length === 2) {
           const trackOne = tracksPairDB[0];

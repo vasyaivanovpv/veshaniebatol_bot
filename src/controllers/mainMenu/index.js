@@ -32,7 +32,7 @@ mainMenu.enter(async (ctx) => {
   const roundDB = await Round.findOne({ status: "active" });
   if (!roundDB)
     return ctx.replyWithMarkdown(
-      `*Подпольное Вещание Батол* \n\n⚠️ 9 СЕЗОН ПВБ ЕЩЕ НЕ НАЧАЛСЯ! \nПридется подождать некоторое время! Следи за актуальной информацией в основном канале ПВБ! \n\nПВБ @veshaniebatol \nВсе треки @pvb\\_tracks \nТаблица clck.ru/QygAz \n\nПоиск и аренда жилья @lvngrm\\_bot`,
+      `*Подпольное Вещание Батол* \n\n⚠️ 9 СЕЗОН ПВБ ЕЩЕ НЕ НАЧАЛСЯ! \nПридется подождать некоторое время! Следи за актуальной информацией в основном канале ПВБ! \n\nПВБ @veshaniebatol \nВсе треки @pvb\\_tracks \nТаблица clck.ru/QygAz \n\nАренда жилья @lvngrm\\_bot`,
       Markup.inlineKeyboard([
         Markup.callbackButton(
           "Обновить инфу",
@@ -57,10 +57,6 @@ mainMenu.enter(async (ctx) => {
   });
   const countTracksCurrentRoundDB = await Track.countDocuments({
     round: roundDB._id,
-  });
-  const countTracksToNextRoundDB = await Track.countDocuments({
-    round: roundDB._id,
-    status: "next",
   });
   const countFirstRoundTracksDB =
     firstRoundDB && firstRoundDB.theme
@@ -161,7 +157,7 @@ mainMenu.enter(async (ctx) => {
     userDB.status === "finished"
   )
     return ctx.replyWithMarkdown(
-      `*Подпольное Вещание Батол* \n${roundDB.name} \nТема: "${roundDB.theme}" \nПрием треков до 23:59 (МСК) *${finishedAt}*. \n\n⚠️ ${scoring} ${minScoreStr} \n\nУчастников на раунде: *${countTracksCurrentRoundDB}* ${roundUsers} \nПрошли в следующий раунд: *${countTracksToNextRoundDB}* \n\nВсего участников: ${countFirstRoundTracksDB} \nВсего треков: ${countSeasonTracksDB} \n\nПВБ @veshaniebatol \nВсе треки @pvb\\_tracks \nТаблица clck.ru/QygAz \n\nПоиск и аренда жилья @lvngrm\\_bot`,
+      `*Подпольное Вещание Батол* \n${roundDB.name} \nТема: "${roundDB.theme}" \nПрием треков до 23:59 (МСК) *${finishedAt}*. \n\n⚠️ ${scoring} ${minScoreStr} \n\nУчастников на раунде: *${countTracksCurrentRoundDB}* ${roundUsers} \nСудей на раунде: *${roundDB.countReferee}* \n\nВсего участников: ${countFirstRoundTracksDB} \nВсего треков: ${countSeasonTracksDB} \n\nПВБ @veshaniebatol \nВсе треки @pvb\\_tracks \nТаблица clck.ru/QygAz \n\nПоиск и аренда жилья @lvngrm\\_bot`,
       Markup.inlineKeyboard(btns).extra({
         disable_web_page_preview: true,
       })
@@ -170,7 +166,9 @@ mainMenu.enter(async (ctx) => {
   await ctx.replyWithMarkdown(
     `*Подпольное Вещание Батол* \n${roundDB.name} \nТема: "${
       roundDB.theme
-    }" \nПрием треков до 23:59 (МСК) *${finishedAt}*. \n\n⚠️ ${scoring} ${minScoreStr} \n\n${rapNamesStr} \n${userStatus.toUpperCase()} \n${scoreRoundStr} *${trackTotal}* \nОценка за сезон: ${seasonTotal} \n\nУчастников на раунде: *${countTracksCurrentRoundDB}* ${roundUsers} \nПрошли в следующий раунд: *${countTracksToNextRoundDB}* \n\nВсего участников: ${countFirstRoundTracksDB} \nВсего треков: ${countSeasonTracksDB} \n\nПВБ @veshaniebatol \nВсе треки @pvb\\_tracks \nТаблица clck.ru/QygAz \n\nПоиск и аренда жилья @lvngrm\\_bot`,
+    }" \nПрием треков до 23:59 (МСК) *${finishedAt}*. \n\n⚠️ ${scoring} ${minScoreStr} \n\n${rapNamesStr} \n${userStatus.toUpperCase()} \n${scoreRoundStr} *${trackTotal}* \nОценка за сезон: ${seasonTotal} \n\nУчастников на раунде: *${countTracksCurrentRoundDB}* ${roundUsers} \nСудей на раунде: *${
+      roundDB.countReferee
+    }* \n\nВсего участников: ${countFirstRoundTracksDB} \nВсего треков: ${countSeasonTracksDB} \n\nПВБ @veshaniebatol \nВсе треки @pvb\\_tracks \nТаблица clck.ru/QygAz \n\nПоиск и аренда жилья @lvngrm\\_bot`,
     Markup.inlineKeyboard(btns).extra({
       disable_web_page_preview: true,
     })
