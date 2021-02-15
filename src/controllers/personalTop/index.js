@@ -46,7 +46,7 @@ personalTop.enter(async (ctx) => {
     { user: userDB._id },
     "popularRate rateUsers",
     {
-      sort: { popularRate: -1 },
+      sort: { popularRateCoef: -1 },
     }
   )
     .populate("user")

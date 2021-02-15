@@ -16,7 +16,13 @@ const Round = require("../models/Round");
 const Track = require("../models/Track");
 const Referee = require("../models/Referee");
 
-const { toStringDate, isValidDate, shuffleArray, sleep } = require("../utils");
+const {
+  toStringDate,
+  isValidDate,
+  shuffleArray,
+  sleep,
+  calculateRate,
+} = require("../utils");
 const {
   typesQuery,
   scores,
@@ -50,6 +56,26 @@ adminRoute.command("clearRating", async (ctx) => {
   const res = await Track.updateMany({}, { popularRate: 0, rateUsers: [] });
   await ctx.replyWithMarkdown(
     `❗️ Найдено документов: ${res.n} и обновлено: ${res.nModified}`
+  );
+});
+
+adminRoute.command("calculateRating", async (ctx) => {
+  let newPopularRate,
+    res,
+    counter = 0;
+  const tracksDB = await Track.find({}, "popularRate rateUsers");
+
+  for (const track of tracksDB) {
+    newPopularRate = calculateRate(track.popularRate, track.rateUsers.length);
+    res = await Track.updateOne(
+      { _id: track._id },
+      { popularRateCoef: newPopularRate }
+    );
+    counter += res.nModified;
+  }
+
+  await ctx.replyWithMarkdown(
+    `❗️ Найдено документов: ${tracksDB.length} и обновлено: ${counter}`
   );
 });
 

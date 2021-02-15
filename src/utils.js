@@ -130,4 +130,13 @@ module.exports = {
     }
     return resultArr;
   },
+  calculateRate: (likes, all) => {
+    const a = likes + 1;
+    const b = all - likes + 1;
+
+    return (
+      a / (a + b) -
+      1.65 * Math.sqrt((a * b) / (Math.pow(a + b, 2) * (a + b + 1)))
+    );
+  },
 };

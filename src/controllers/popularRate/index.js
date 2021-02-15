@@ -2,7 +2,7 @@ const Scene = require("telegraf/scenes/base");
 const Markup = require("telegraf/markup");
 const rateLimit = require("telegraf-ratelimit");
 const { typesQuery } = require("../../constants");
-const { splitArray } = require("../../utils");
+const { splitArray, calculateRate } = require("../../utils");
 
 const Track = require("../../models/Track");
 const User = require("../../models/User");
@@ -171,6 +171,15 @@ popularRate.on("callback_query", async (ctx) => {
       trackDB.popularRate = trackDB.popularRate + v;
       trackDB.rateUsers.push(ctx.from.id);
       await trackDB.save();
+
+      const popularRateCoef = calculateRate(
+        trackDB.popularRate,
+        trackDB.rateUsers.length
+      );
+      await trackDB.updateOne(
+        { _id: id },
+        { popularRateCoef: popularRateCoef }
+      );
 
       trackDB = await Track.findOne(
         {

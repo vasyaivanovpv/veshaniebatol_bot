@@ -39,6 +39,10 @@ const schema = new Schema({
     default: "checking",
   },
   adminMessageId: String,
+  popularRateCoef: {
+    type: Number,
+    default: 0,
+  },
   popularRate: {
     type: Number,
     default: 0,

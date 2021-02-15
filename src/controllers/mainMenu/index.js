@@ -157,7 +157,7 @@ mainMenu.enter(async (ctx) => {
     userDB.status === "finished"
   )
     return ctx.replyWithMarkdown(
-      `*Подпольное Вещание Батол* \n${roundDB.name} \nТема: "${roundDB.theme}" \nПрием треков до 23:59 (МСК) *${finishedAt}*. \n\n⚠️ ${scoring} ${minScoreStr} \n\nУчастников на раунде: *${countTracksCurrentRoundDB}* ${roundUsers} \nСудей на раунде: *${roundDB.countReferee}* \n\nВсего участников: ${countFirstRoundTracksDB} \nВсего треков: ${countSeasonTracksDB} \n\nПВБ @veshaniebatol \nВсе треки @pvb\\_tracks \nТаблица clck.ru/QygAz \n\nПоиск и аренда жилья @lvngrm\\_bot`,
+      `*Подпольное Вещание Батол* \n${roundDB.name} \nТема: "${roundDB.theme}" \nПрием треков до 23:59 (МСК) *${finishedAt}*. \n\n⚠️ ${scoring} ${minScoreStr} \n\nУчастников на раунде: *${countTracksCurrentRoundDB}* ${roundUsers} \nСудей на раунде: *${roundDB.countReferee}* \n\nВсего участников: ${countFirstRoundTracksDB} \nВсего треков: ${countSeasonTracksDB} \n\nПВБ @veshaniebatol \nВсе треки @pvb\\_tracks \nТаблица clck.ru/QygAz \n\nАренда жилья @lvngrm\\_bot`,
       Markup.inlineKeyboard(btns).extra({
         disable_web_page_preview: true,
       })
@@ -168,7 +168,7 @@ mainMenu.enter(async (ctx) => {
       roundDB.theme
     }" \nПрием треков до 23:59 (МСК) *${finishedAt}*. \n\n⚠️ ${scoring} ${minScoreStr} \n\n${rapNamesStr} \n${userStatus.toUpperCase()} \n${scoreRoundStr} *${trackTotal}* \nОценка за сезон: ${seasonTotal} \n\nУчастников на раунде: *${countTracksCurrentRoundDB}* ${roundUsers} \nСудей на раунде: *${
       roundDB.countReferee
-    }* \n\nВсего участников: ${countFirstRoundTracksDB} \nВсего треков: ${countSeasonTracksDB} \n\nПВБ @veshaniebatol \nВсе треки @pvb\\_tracks \nТаблица clck.ru/QygAz \n\nПоиск и аренда жилья @lvngrm\\_bot`,
+    }* \n\nВсего участников: ${countFirstRoundTracksDB} \nВсего треков: ${countSeasonTracksDB} \n\nПВБ @veshaniebatol \nВсе треки @pvb\\_tracks \nТаблица clck.ru/QygAz \n\nАренда жилья @lvngrm\\_bot`,
     Markup.inlineKeyboard(btns).extra({
       disable_web_page_preview: true,
     })
@@ -235,8 +235,8 @@ mainMenu.on("callback_query", checkJSONmw, async (ctx) => {
         rateUsers: { $ne: ctx.from.id },
       });
       if (!countTrackDB) return ctx.answerCbQuery(`Нет треков для оценивания!`);
-      await ctx.answerCbQuery();
-      return ctx.scene.enter("popular_rate");
+      return ctx.answerCbQuery(`Пока не работает!`);
+    // return ctx.scene.enter("popular_rate");
 
     case typesQuery.TOP_TRACKS:
       await ctx.answerCbQuery();

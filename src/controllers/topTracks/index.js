@@ -41,7 +41,7 @@ topTracks.start(async (ctx) => {
 
 topTracks.enter(async (ctx) => {
   const topTrackDB = await Track.find({}, "popularRate rateUsers", {
-    sort: { popularRate: -1 },
+    sort: { popularRateCoef: -1 },
     limit: 10,
   })
     .populate("user")
