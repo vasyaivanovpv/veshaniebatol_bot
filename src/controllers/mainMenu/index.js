@@ -235,8 +235,8 @@ mainMenu.on("callback_query", checkJSONmw, async (ctx) => {
         rateUsers: { $ne: ctx.from.id },
       });
       if (!countTrackDB) return ctx.answerCbQuery(`Нет треков для оценивания!`);
-      return ctx.answerCbQuery(`Пока не работает!`);
-    // return ctx.scene.enter("popular_rate");
+      await ctx.answerCbQuery(`Пока не работает!`);
+      return ctx.scene.enter("popular_rate");
 
     case typesQuery.TOP_TRACKS:
       await ctx.answerCbQuery();
