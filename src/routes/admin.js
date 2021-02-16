@@ -79,6 +79,35 @@ adminRoute.command("calculateRating", async (ctx) => {
   );
 });
 
+adminRoute.command("updateArtistRating", async (ctx) => {
+  const artistsDB = await User.find({ status: ["active", "finished"] });
+  if (!artistsDB) return ctx.replyWithMarkdown("❗️ Нет исполнителей");
+
+  const promoRoundDB = await Round.findOne({ index: 0 });
+  const activeRoundDB = await Round.findOne({ status: "active" });
+
+  for (const artist of artistsDB) {
+    const artistTracksDB = await Track.find(
+      {
+        user: artist._id,
+        round: { $nin: [promoRoundDB._id, activeRoundDB._id] },
+      },
+      "total"
+    );
+
+    const totalRate = artistTracksDB.reduce(
+      (acc, track) => acc + track.total,
+      0
+    );
+
+    await User.updateOne({ _id: artist._id }, { totalRate: totalRate });
+  }
+
+  return ctx.replyWithMarkdown(
+    `❗️ Найдено и обновлено исполнителей *${artistsDB.length}*!`
+  );
+});
+
 adminRoute.command("listRounds", async (ctx) => {
   if (ctx.from.id !== +ADMIN_ID)
     return ctx.replyWithMarkdown("❗️ Только Вася Иванов имеют такую силу)!");
@@ -249,6 +278,24 @@ adminRoute.command(
     }
 
     if (currentRoundDB.index) {
+      const currentTracks = await Track.find(
+        {
+          round: currentRoundDB._id,
+        },
+        "total"
+      );
+
+      for (const track of currentTracks) {
+        await User.updateOne(
+          { _id: track.user },
+          {
+            $inc: {
+              totalRate: track.total,
+            },
+          }
+        );
+      }
+
       await Track.updateMany(
         {
           round: currentRoundDB._id,

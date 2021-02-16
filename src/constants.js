@@ -13,6 +13,7 @@ const typesQuery = {
   PERSONAL_TOP: "PERSONAL_TOP",
   SELECT_ROUND: "SELECT_ROUND",
   ROUND_LIST: "ROUND_LIST",
+  ARTIST_RATING: "ARTIST_RATING",
 };
 
 const textBlockLimits = {
@@ -38,6 +39,12 @@ const innerRoundStatus = {
   ending: "Выставлены все оценки",
 };
 
+const userStatus = {
+  active: "🎤",
+  finished: "☠️",
+  empty: "🌝",
+};
+
 const textCellColors = {
   navyBlue: { red: 0.16862746, green: 0.34509805, blue: 0.47843137 },
   blue: { red: 0.6117647, green: 0.7607843, blue: 0.8980392 },
@@ -58,4 +65,5 @@ module.exports = {
   sheetValues,
   textCellColors,
   scores,
+  userStatus,
 };

@@ -12,9 +12,18 @@ const sendTrack = require("../controllers/sendTrack");
 const popularRate = require("../controllers/popularRate");
 const topTracks = require("../controllers/topTracks");
 const personalTop = require("../controllers/personalTop");
+const artistRating = require("../controllers/artistRating");
 
 const stage = new Stage(
-  [mainMenu, registration, sendTrack, popularRate, topTracks, personalTop],
+  [
+    mainMenu,
+    registration,
+    sendTrack,
+    popularRate,
+    topTracks,
+    personalTop,
+    artistRating,
+  ],
   {
     // ttl: 10,
     // default: "main_menu",

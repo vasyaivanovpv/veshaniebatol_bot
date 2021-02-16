@@ -129,6 +129,12 @@ mainMenu.enter(async (ctx) => {
         JSON.stringify({ type: typesQuery.UPDATE_INFO })
       ),
     ],
+    [
+      Markup.callbackButton(
+        "Рейтинг исполнителей",
+        JSON.stringify({ type: typesQuery.ARTIST_RATING })
+      ),
+    ],
     topBtns,
     [
       Markup.callbackButton(
@@ -149,7 +155,7 @@ mainMenu.enter(async (ctx) => {
     now > roundDB.finishedAt ||
     trackDB
   ) {
-    btns = btns.slice(0, 3);
+    btns = btns.slice(0, 4);
   }
 
   if (
@@ -241,6 +247,10 @@ mainMenu.on("callback_query", checkJSONmw, async (ctx) => {
     case typesQuery.TOP_TRACKS:
       await ctx.answerCbQuery();
       return ctx.scene.enter("top_tracks");
+
+    case typesQuery.ARTIST_RATING:
+      await ctx.answerCbQuery();
+      return ctx.scene.enter("artist_rating");
 
     case typesQuery.PERSONAL_TOP:
       const countPersonalTracksDB = await Track.countDocuments({

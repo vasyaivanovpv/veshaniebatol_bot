@@ -18,6 +18,10 @@ const schema = new Schema({
     enum: ["empty", "active", "finished"],
     default: "empty",
   },
+  totalRate: {
+    type: Number,
+    default: 0,
+  },
 });
 
 const User = model("User", schema);

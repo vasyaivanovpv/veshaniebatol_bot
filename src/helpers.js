@@ -1,3 +1,4 @@
+const { userStatus } = require("./constants");
 const { isJSONString } = require("./utils");
 
 const checkJSONmw = async (ctx, next) => {
@@ -17,7 +18,16 @@ const getTrackList = (tracks) =>
     return acc;
   }, "");
 
+const getArtistList = (artists) =>
+  artists.reduce((acc, artist, i) => {
+    acc += `*${i + 1}.* ${userStatus[artist.status]} *${artist.rapName}*, *${
+      artist.totalRate
+    }*\n`;
+    return acc;
+  }, "");
+
 module.exports = {
   checkJSONmw,
   getTrackList,
+  getArtistList,
 };
