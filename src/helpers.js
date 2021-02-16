@@ -20,7 +20,7 @@ const getTrackList = (tracks) =>
 
 const getArtistList = (artists) =>
   artists.reduce((acc, artist, i) => {
-    acc += `*${i + 1}.* ${userStatus[artist.status]} *${artist.rapName}*, *${
+    acc += `*${i + 1}.* ${userStatus[artist.status]} ${artist.rapName}, *${
       artist.totalRate
     }*\n`;
     return acc;
