@@ -52,6 +52,10 @@ adminRoute.command("test", async (ctx) => {
   await ctx.replyWithMarkdown("❗️ Таблицы работают!");
 });
 
+adminRoute.command("getDate", async (ctx) => {
+  return ctx.replyWithMarkdown(`❗️ ${new Date()}`);
+});
+
 adminRoute.command("clearRating", async (ctx) => {
   const res = await Track.updateMany({}, { popularRate: 0, rateUsers: [] });
   await ctx.replyWithMarkdown(
