@@ -176,10 +176,8 @@ popularRate.on("callback_query", async (ctx) => {
         trackDB.popularRate,
         trackDB.rateUsers.length
       );
-      await trackDB.updateOne(
-        { _id: id },
-        { popularRateCoef: popularRateCoef }
-      );
+
+      await Track.updateOne({ _id: id }, { popularRateCoef: popularRateCoef });
 
       trackDB = await Track.findOne(
         {
