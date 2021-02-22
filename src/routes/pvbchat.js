@@ -23,7 +23,7 @@ pvbChat.hears(/^rating$/, async (ctx) => {
 
   if (userDB.totalRate)
     return ctx.replyWithMarkdown(
-      `Это *${userDB.rapName} со статусом: ${
+      `Это *${userDB.rapName}* со статусом: ${
         userStatus[userDB.status]
       } и с количестом баллов: *${userDB.totalRate}*`
     );
