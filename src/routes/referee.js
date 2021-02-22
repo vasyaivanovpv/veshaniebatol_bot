@@ -8,6 +8,7 @@ const spreadsheet = require("../g_spreadsheet");
 const Referee = require("../models/Referee");
 const Round = require("../models/Round");
 const Track = require("../models/Track");
+const User = require("../models/User");
 
 const { escapeChar } = require("../utils");
 const { typesQuery } = require("../constants");
