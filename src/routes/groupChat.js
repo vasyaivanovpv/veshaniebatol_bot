@@ -2,7 +2,7 @@ const { ADMIN_PVB, REFEREE_CHANNEL, CHAT_PVB } = require("../config");
 const Composer = require("telegraf/composer");
 
 const adminRoute = require("./admin");
-const pvbChat = require("./pvbChat");
+const pvbсhat = require("./pvbсhat");
 const refereeRoute = require("./referee");
 const defaultRoute = require("./default");
 
@@ -15,7 +15,7 @@ groupChatRoute.use(
       case +ADMIN_PVB:
         return adminRoute;
       case +CHAT_PVB:
-        return pvbChat;
+        return pvbсhat;
       default:
         return defaultRoute;
     }
