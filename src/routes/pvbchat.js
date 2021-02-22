@@ -25,8 +25,12 @@ pvbChat.hears(/^rating$/, async (ctx) => {
     return ctx.replyWithMarkdown(
       `Это *${userDB.rapName}* со статусом: ${
         userStatus[userDB.status]
-      } и с количестом баллов: *${userDB.totalRate}*`
+      } и с количеством баллов: *${userDB.totalRate}*`
     );
+
+  return ctx.replyWithMarkdown(
+    `Это *${userDB.rapName}* со статусом: ${userStatus[userDB.status]}`
+  );
 });
 
 pvbChat.on("callback_query", async (ctx) => {
