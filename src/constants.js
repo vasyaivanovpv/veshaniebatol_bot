@@ -45,6 +45,11 @@ const userStatus = {
   empty: "🌝",
 };
 
+const actionBtnValues = [
+  { text: "💩", value: 0 },
+  { text: "💖", value: 1 },
+];
+
 const textCellColors = {
   navyBlue: { red: 0.16862746, green: 0.34509805, blue: 0.47843137 },
   blue: { red: 0.6117647, green: 0.7607843, blue: 0.8980392 },
@@ -66,4 +71,5 @@ module.exports = {
   textCellColors,
   scores,
   userStatus,
+  actionBtnValues,
 };

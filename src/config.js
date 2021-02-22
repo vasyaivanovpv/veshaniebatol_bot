@@ -3,6 +3,7 @@ const config = {
   MAIN_CHANNEL: process.env.CHANNEL_TEST,
   CHANNEL: process.env.CHANNEL_TEST,
   ADMIN_PVB: process.env.TEST_ADMIN_GROUP,
+  CHAT_PVB: process.env.CHAT_PVB,
   CHANNEL_NAME: process.env.CHANNEL_NAME,
   REFEREE_CHANNEL: process.env.TEST_CHAT,
   DB_URL: "mongodb://localhost:27017/" + process.env.DB_NAME,

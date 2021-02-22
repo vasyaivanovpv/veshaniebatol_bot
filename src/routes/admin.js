@@ -2,6 +2,7 @@ const {
   ADMIN_ID,
   CHANNEL,
   MAIN_CHANNEL,
+  CHAT_PVB,
   REFEREE_CHANNEL,
   ACTIVE_SHEET,
 } = require("../config");
@@ -29,6 +30,7 @@ const {
   innerRoundStatus,
   sheetValues,
   textCellColors,
+  actionBtnValues,
 } = require("../constants");
 
 const messageChatDelay = (60 * 1000) / 20;
@@ -710,6 +712,25 @@ adminRoute.on("callback_query", async (ctx) => {
       await ctx.telegram.sendAudio(CHANNEL, trackDB.trackId, {
         parse_mode: "Markdown",
       });
+
+      await ctx.telegram.sendAudio(
+        CHAT_PVB,
+        trackDB.trackId,
+        Markup.inlineKeyboard(
+          actionBtnValues.map((btn) =>
+            Markup.callbackButton(
+              btn.text,
+              JSON.stringify({
+                type: typesQuery.LIKE,
+                id: trackDB._id,
+                v: btn.value,
+              })
+            )
+          )
+        ).extra({
+          parse_mode: "Markdown",
+        })
+      );
 
       await ctx.editMessageText(
         `Трек [${userDB.rapName}](tg://user?id=${userDB.telegramId}) принят!`,

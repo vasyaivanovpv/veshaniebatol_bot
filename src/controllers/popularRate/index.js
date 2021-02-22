@@ -1,7 +1,7 @@
 const Scene = require("telegraf/scenes/base");
 const Markup = require("telegraf/markup");
 const rateLimit = require("telegraf-ratelimit");
-const { typesQuery } = require("../../constants");
+const { typesQuery, actionBtnValues } = require("../../constants");
 const { splitArray, calculateRate } = require("../../utils");
 
 const Track = require("../../models/Track");
@@ -21,11 +21,6 @@ const limitConfig = {
     await ctx.reply("❗️ Не спеши, послушай сначала трек!");
   },
 };
-
-const actionBtnValues = [
-  { text: "💩", value: 0 },
-  { text: "💖", value: 1 },
-];
 
 const mainMenuBtn = [
   Markup.callbackButton(
