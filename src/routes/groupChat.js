@@ -2,7 +2,7 @@ const { ADMIN_PVB, REFEREE_CHANNEL, CHAT_PVB } = require("../config");
 const Composer = require("telegraf/composer");
 
 const adminRoute = require("./admin");
-const pvbChat = require("./pvbсhat");
+const pvbChat = require("./pvbchat");
 const refereeRoute = require("./referee");
 const defaultRoute = require("./default");
 
