@@ -289,11 +289,11 @@ adminRoute.command(
           round: currentRoundDB._id,
         },
         "total"
-      );
+      ).populate("user", "_id");
 
       for (const track of currentTracks) {
         await User.updateOne(
-          { _id: track.user },
+          { _id: track.user._id },
           {
             $inc: {
               totalRate: track.total,
@@ -311,6 +311,7 @@ adminRoute.command(
           status: "next",
         }
       );
+
       const stopTracks = await Track.find({
         round: currentRoundDB._id,
         total: { $lt: currentRoundDB.minScore },
@@ -336,6 +337,32 @@ adminRoute.command(
     );
   })
 );
+
+adminRoute.command("recountUserRating", async (ctx) => {
+  const currentRoundDB = await Round.findOne({ status: "active" });
+  if (!currentRoundDB)
+    return ctx.replyWithMarkdown(`❗️ Нет запущенных раундов.`);
+
+  const currentTracks = await Track.find(
+    {
+      round: currentRoundDB._id,
+    },
+    "total"
+  ).populate("user", "_id");
+
+  for (const track of currentTracks) {
+    await User.updateOne(
+      { _id: track.user._id },
+      {
+        $inc: {
+          totalRate: track.total,
+        },
+      }
+    );
+  }
+
+  await ctx.replyWithMarkdown(`❗️ Произошел пересчет`);
+});
 
 adminRoute.hears(/^startNextRound (.+)/, async (ctx) => {
   if (ctx.from.id !== +ADMIN_ID)
