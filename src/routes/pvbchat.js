@@ -41,8 +41,10 @@ pvbChat.on("callback_query", async (ctx) => {
 
   switch (type) {
     case typesQuery.LIKE:
-      trackDB = await Track.findById(id);
+      trackDB = await Track.findById(id).populate("user", "telegramId");
       if (!trackDB) return ctx.answerCbQuery("Нет такого трека!");
+      if (trackDB.user.telegramId === ctx.from.id)
+        return ctx.answerCbQuery("Свой трек нельзя оценить!", true);
       if (trackDB.rateUsers.includes(ctx.from.id))
         return ctx.answerCbQuery("Уже проголосовал!", true);
       trackDB.popularRate = trackDB.popularRate + v;
