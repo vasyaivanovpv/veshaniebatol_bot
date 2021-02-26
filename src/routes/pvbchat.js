@@ -44,7 +44,7 @@ pvbChat.on("callback_query", async (ctx) => {
       trackDB = await Track.findById(id);
       if (!trackDB) return ctx.answerCbQuery("Нет такого трека!");
       if (trackDB.rateUsers.includes(ctx.from.id))
-        return ctx.answerCbQuery("Уже проголосовал!");
+        return ctx.answerCbQuery("Уже проголосовал!", true);
       trackDB.popularRate = trackDB.popularRate + v;
       trackDB.rateUsers.push(ctx.from.id);
       await trackDB.save();
