@@ -163,16 +163,21 @@ popularRate.on("callback_query", async (ctx) => {
 
     case typesQuery.LIKE:
       trackDB = await Track.findById(id);
-      trackDB.popularRate = trackDB.popularRate + v;
-      trackDB.rateUsers.push(ctx.from.id);
-      await trackDB.save();
+      if (!trackDB.rateUsers.includes(ctx.from.id)) {
+        trackDB.popularRate = trackDB.popularRate + v;
+        trackDB.rateUsers.push(ctx.from.id);
+        await trackDB.save();
 
-      const popularRateCoef = calculateRate(
-        trackDB.popularRate,
-        trackDB.rateUsers.length
-      );
+        const popularRateCoef = calculateRate(
+          trackDB.popularRate,
+          trackDB.rateUsers.length
+        );
 
-      await Track.updateOne({ _id: id }, { popularRateCoef: popularRateCoef });
+        await Track.updateOne(
+          { _id: id },
+          { popularRateCoef: popularRateCoef }
+        );
+      }
 
       trackDB = await Track.findOne(
         {
@@ -190,6 +195,7 @@ popularRate.on("callback_query", async (ctx) => {
         roundIK = await getRoundIK();
 
         await ctx.editMessageReplyMarkup();
+        await ctx.answerCbQuery();
         await ctx.replyWithMarkdown(`❗️ С этого раунда закончились треки!`);
         return ctx.replyWithMarkdown(
           `❗️ Выбери раунд, треки которого будешь оценивать!`,
