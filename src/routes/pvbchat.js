@@ -1,10 +1,11 @@
 const Composer = require("telegraf/composer");
+const Markup = require("telegraf/markup");
 
 const Track = require("../models/Track");
 const User = require("../models/User");
 
 const { calculateRate } = require("../utils");
-const { typesQuery, userStatus } = require("../constants");
+const { typesQuery, userStatus, actionBtnValues } = require("../constants");
 
 const pvbChat = new Composer();
 
@@ -30,6 +31,50 @@ pvbChat.hears(/^rating$/, async (ctx) => {
 
   return ctx.replyWithMarkdown(
     `Это *${userDB.rapName}* со статусом: ${userStatus[userDB.status]}`
+  );
+});
+
+pvbChat.hears(/^track$/, async (ctx) => {
+  if (!ctx.message.reply_to_message) return;
+  if (ctx.message.reply_to_message.from.is_bot) return;
+  if (ctx.message.reply_to_message.from.id === ctx.from.id) return;
+
+  const userDB = await User.findOne({
+    telegramId: ctx.message.reply_to_message.from.id,
+  });
+
+  if (!userDB)
+    return ctx.replyWithMarkdown("❗️ Этот юзер не участвует в батле!", {
+      reply_to_message_id: ctx.message.message_id,
+    });
+
+  const trackDB = await Track.findOne({ user: userDB._id }, "_id trackId", {
+    sort: {
+      uploadedAt: -1,
+    },
+  });
+
+  if (!trackDB)
+    return ctx.replyWithMarkdown("❗️ Этот юзер не участвует в батле!", {
+      reply_to_message_id: ctx.message.message_id,
+    });
+
+  return ctx.replyWithAudio(
+    trackDB.trackId,
+    Markup.inlineKeyboard(
+      actionBtnValues.map((btn) =>
+        Markup.callbackButton(
+          btn.text,
+          JSON.stringify({
+            type: typesQuery.LIKE,
+            id: trackDB._id,
+            v: btn.value,
+          })
+        )
+      )
+    ).extra({
+      parse_mode: "Markdown",
+    })
   );
 });
 
