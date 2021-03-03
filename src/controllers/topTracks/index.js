@@ -44,8 +44,8 @@ topTracks.enter(async (ctx) => {
     sort: { popularRateCoef: -1 },
     limit: 10,
   })
-    .populate("user")
-    .populate("round");
+    .populate("user", "rapName")
+    .populate("round", "theme name");
 
   const topTrackList = getTrackList(topTrackDB);
   const ik = getIK(topTrackDB);

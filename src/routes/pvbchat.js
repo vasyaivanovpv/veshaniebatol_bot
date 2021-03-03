@@ -5,6 +5,7 @@ const Track = require("../models/Track");
 const User = require("../models/User");
 
 const { calculateRate } = require("../utils");
+const { getTrackList, getArtistList } = require("../helpers");
 const { typesQuery, userStatus, actionBtnValues } = require("../constants");
 
 const pvbChat = new Composer();
@@ -75,6 +76,40 @@ pvbChat.hears(/^track$/, async (ctx) => {
     ).extra({
       parse_mode: "Markdown",
     })
+  );
+});
+
+pvbChat.hears(/^topTracks$/, async (ctx) => {
+  const topTrackDB = await Track.find({}, "popularRate rateUsers", {
+    sort: { popularRateCoef: -1 },
+    limit: 3,
+  })
+    .populate("user", "rapName")
+    .populate("round", "theme name");
+
+  const topTrackList = getTrackList(topTrackDB);
+
+  await ctx.replyWithMarkdown(
+    `🌈 *ТОП-3* \n_Народное голосование_ \n\n${topTrackList}`
+  );
+});
+
+pvbChat.hears(/^topArtists$/, async (ctx) => {
+  const artistsDB = await User.find(
+    { status: ["active", "finished"] },
+    "rapName status totalRate",
+    {
+      sort: {
+        totalRate: -1,
+      },
+      limit: 20,
+    }
+  );
+
+  const topTrackList = getArtistList(artistsDB);
+
+  await ctx.replyWithMarkdown(
+    `👥 *Рейтинг исполнителей* \n_Судейские баллы. Рейтинг обновляется каждый раунд после окончания судейства._ \n\n${topTrackList}`
   );
 });
 
