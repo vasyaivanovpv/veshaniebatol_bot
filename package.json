@@ -7,7 +7,7 @@
   "dependencies": {
     "dotenv": "^8.2.0",
     "google-spreadsheet": "^3.0.13",
-    "mongoose": "^5.9.10",
+    "mongoose": "5.9.13",
     "telegraf": "^3.37.0",
     "telegraf-media-group": "^1.1.1",
     "telegraf-ratelimit": "^2.0.0"

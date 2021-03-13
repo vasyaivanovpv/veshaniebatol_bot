@@ -93,11 +93,15 @@ pvbChat.hears(/^rateUsers$/, async (ctx) => {
       reply_to_message_id: ctx.message.message_id,
     });
 
-  const trackDB = await Track.findOne({ user: userDB._id }, "_id trackId", {
-    sort: {
-      uploadedAt: -1,
-    },
-  });
+  const trackDB = await Track.findOne(
+    { user: userDB._id },
+    "_id trackId rateUsers",
+    {
+      sort: {
+        uploadedAt: -1,
+      },
+    }
+  );
 
   if (!trackDB)
     return ctx.replyWithMarkdown("❗️ Этот юзер не участвует в батле!", {
