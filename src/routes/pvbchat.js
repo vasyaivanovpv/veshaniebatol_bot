@@ -79,10 +79,49 @@ pvbChat.hears(/^track$/, async (ctx) => {
   );
 });
 
+pvbChat.hears(/^rateUsers$/, async (ctx) => {
+  if (!ctx.message.reply_to_message) return;
+  if (ctx.message.reply_to_message.from.is_bot) return;
+  if (ctx.message.reply_to_message.from.id === ctx.from.id) return;
+
+  const userDB = await User.findOne({
+    telegramId: ctx.message.reply_to_message.from.id,
+  });
+
+  if (!userDB)
+    return ctx.replyWithMarkdown("❗️ Этот юзер не участвует в батле!", {
+      reply_to_message_id: ctx.message.message_id,
+    });
+
+  const trackDB = await Track.findOne({ user: userDB._id }, "_id trackId", {
+    sort: {
+      uploadedAt: -1,
+    },
+  });
+
+  if (!trackDB)
+    return ctx.replyWithMarkdown("❗️ Этот юзер не участвует в батле!", {
+      reply_to_message_id: ctx.message.message_id,
+    });
+
+  if (!trackDB.rateUsers.length)
+    return ctx.replyWithMarkdown("❗️ У его последнего трека нет оценок!");
+
+  const rateUsers = trackDB.rateUsers.reduce((acc, userId, i) => {
+    const coma = i ? "," : "";
+    acc = `${acc}${coma} [юзер${i + 1}](tg://user?id=${userId})`;
+    return acc;
+  }, ``);
+
+  return ctx.replyWithMarkdown(
+    `❗️ За его последний трек голосовали: \n\n${rateUsers}`
+  );
+});
+
 pvbChat.hears(/^topTracks$/, async (ctx) => {
   const topTrackDB = await Track.find({}, "popularRate rateUsers", {
     sort: { popularRateCoef: -1 },
-    limit: 3,
+    limit: 5,
   })
     .populate("user", "rapName")
     .populate("round", "theme name");
@@ -90,7 +129,7 @@ pvbChat.hears(/^topTracks$/, async (ctx) => {
   const topTrackList = getTrackList(topTrackDB);
 
   await ctx.replyWithMarkdown(
-    `🌈 *ТОП-3* \n_Народное голосование_ \n\n${topTrackList}`
+    `🌈 *ТОП-5* \n_Народное голосование_ \n\n${topTrackList}`
   );
 });
 
@@ -126,7 +165,7 @@ pvbChat.on("callback_query", async (ctx) => {
       if (trackDB.user.telegramId === ctx.from.id)
         return ctx.answerCbQuery("Свой трек нельзя оценить!", true);
       if (trackDB.rateUsers.includes(ctx.from.id))
-        return ctx.answerCbQuery("Уже проголосовал!", true);
+        return ctx.answerCbQuery("Ты уже голосовал!", true);
       trackDB.popularRate = trackDB.popularRate + v;
       trackDB.rateUsers.push(ctx.from.id);
       await trackDB.save();
