@@ -1,3 +1,4 @@
+const { ADMIN_ID } = require("../config");
 const Composer = require("telegraf/composer");
 const Markup = require("telegraf/markup");
 
@@ -80,6 +81,7 @@ pvbChat.hears(/^track$/, async (ctx) => {
 });
 
 pvbChat.hears(/^rateUsers$/, async (ctx) => {
+  if (ctx.from.id !== +ADMIN_ID) return;
   if (!ctx.message.reply_to_message) return;
   if (ctx.message.reply_to_message.from.is_bot) return;
   if (ctx.message.reply_to_message.from.id === ctx.from.id) return;
