@@ -209,7 +209,7 @@ pvbChat.on("callback_query", async (ctx) => {
     case typesQuery.SELECT_ROUND:
       trackDB = await Track.findById(id, "trackId");
 
-      await ctx.callbackQuery("");
+      await ctx.answerCbQuery("");
       return ctx.replyWithAudio(
         trackDB.trackId,
         Markup.inlineKeyboard(
