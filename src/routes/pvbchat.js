@@ -80,6 +80,47 @@ pvbChat.hears(/^track$/, async (ctx) => {
   );
 });
 
+pvbChat.hears(/^tracks$/, async (ctx) => {
+  if (!ctx.message.reply_to_message) return;
+  if (ctx.message.reply_to_message.from.is_bot) return;
+  if (ctx.message.reply_to_message.from.id === ctx.from.id) return;
+
+  const userDB = await User.findOne({
+    telegramId: ctx.message.reply_to_message.from.id,
+  });
+
+  if (!userDB)
+    return ctx.replyWithMarkdown("❗️ Этот юзер не участвует в батле!", {
+      reply_to_message_id: ctx.message.message_id,
+    });
+
+  const trackDB = await Track.find({ user: userDB._id }, "_id trackId", {
+    sort: {
+      uploadedAt: 1,
+    },
+  }).populate("round", "index");
+
+  if (!trackDB.length)
+    return ctx.replyWithMarkdown("❗️ Этот юзер не участвует в батле!", {
+      reply_to_message_id: ctx.message.message_id,
+    });
+
+  const trackIK = trackDB.map((track) =>
+    Markup.callbackButton(
+      track.round.index,
+      JSON.stringify({
+        type: typesQuery.SELECT_ROUND,
+        id: track._id,
+      })
+    )
+  );
+
+  return ctx.replyWithMarkdown(
+    `Выбери раунд, чтобы послушать трек от *${userDB.rapName}*`,
+    Markup.inlineKeyboard(trackIK, { columns: 5 }).extra()
+  );
+});
+
 pvbChat.hears(/^rateUsers$/, async (ctx) => {
   if (ctx.from.id !== +ADMIN_ID) return;
   if (!ctx.message.reply_to_message) return;
@@ -165,6 +206,28 @@ pvbChat.on("callback_query", async (ctx) => {
   let trackDB;
 
   switch (type) {
+    case typesQuery.SELECT_ROUND:
+      trackDB = await Track.findById(id, "trackId");
+
+      await ctx.callbackQuery("");
+      return ctx.replyWithAudio(
+        trackDB.trackId,
+        Markup.inlineKeyboard(
+          actionBtnValues.map((btn) =>
+            Markup.callbackButton(
+              btn.text,
+              JSON.stringify({
+                type: typesQuery.LIKE,
+                id: id,
+                v: btn.value,
+              })
+            )
+          )
+        ).extra({
+          parse_mode: "Markdown",
+        })
+      );
+
     case typesQuery.LIKE:
       trackDB = await Track.findById(id).populate("user", "telegramId");
       if (!trackDB) return ctx.answerCbQuery("Нет такого трека!");
