@@ -166,7 +166,7 @@ pvbChat.hears(/^rateUsers$/, async (ctx) => {
 });
 
 pvbChat.hears(/^topTracks$/, async (ctx) => {
-  const topTrackDB = await Track.find({}, "popularRate rateUsers", {
+  const topTrackDB = await Track.find({}, "_id popularRate rateUsers", {
     sort: { popularRateCoef: -1 },
     limit: 5,
   })
@@ -174,9 +174,19 @@ pvbChat.hears(/^topTracks$/, async (ctx) => {
     .populate("round", "theme name");
 
   const topTrackList = getTrackList(topTrackDB);
+  const trackIK = topTrackDB.map((track, i) =>
+    Markup.callbackButton(
+      i + 1,
+      JSON.stringify({
+        type: typesQuery.SELECT_ROUND,
+        id: track._id,
+      })
+    )
+  );
 
   await ctx.replyWithMarkdown(
-    `🌈 *ТОП-5* \n_Народное голосование_ \n\n${topTrackList}`
+    `🌈 *Рейтинг треков, ТОП-5* \n_Народное голосование_ \n\n${topTrackList}`,
+    Markup.inlineKeyboard(trackIK, { columns: 5 }).extra()
   );
 });
 
@@ -195,7 +205,7 @@ pvbChat.hears(/^topArtists$/, async (ctx) => {
   const topTrackList = getArtistList(artistsDB);
 
   await ctx.replyWithMarkdown(
-    `👥 *Рейтинг исполнителей* \n_Судейские баллы. Рейтинг обновляется каждый раунд после окончания судейства._ \n\n${topTrackList}`
+    `👥 *Рейтинг исполнителей, ТОП-20* \n_Судейские баллы. Рейтинг обновляется каждый раунд после окончания судейства._ \n\n${topTrackList}`
   );
 });
 
