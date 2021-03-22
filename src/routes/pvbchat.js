@@ -5,7 +5,7 @@ const Markup = require("telegraf/markup");
 const Track = require("../models/Track");
 const User = require("../models/User");
 
-const { calculateRate } = require("../utils");
+const { calculateRate, escapeChar } = require("../utils");
 const { getTrackList, getArtistList } = require("../helpers");
 const { typesQuery, userStatus, actionBtnValues } = require("../constants");
 
@@ -219,7 +219,12 @@ pvbChat.on("callback_query", async (ctx) => {
     case typesQuery.SELECT_ROUND:
       trackDB = await Track.findById(id, "trackId");
 
-      await ctx.answerCbQuery("");
+      await ctx.answerCbQuery();
+      await ctx.replyWithMarkdown(
+        `Бегемотик по имени [${escapeChar(ctx.from.first_name)}](tg://user?id=${
+          ctx.from.id
+        }) заказал трек ниже:`
+      );
       return ctx.replyWithAudio(
         trackDB.trackId,
         Markup.inlineKeyboard(
