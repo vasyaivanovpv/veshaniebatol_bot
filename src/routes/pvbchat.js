@@ -221,7 +221,7 @@ pvbChat.on("callback_query", async (ctx) => {
 
       await ctx.answerCbQuery();
       await ctx.replyWithMarkdown(
-        `Бегемотик по имени [${escapeChar(ctx.from.first_name)}](tg://user?id=${
+        `Бегемотик [${escapeChar(ctx.from.first_name)}](tg://user?id=${
           ctx.from.id
         }) заказал трек ниже:`
       );
